@@ -1,6 +1,21 @@
 # VBA MCP Server - Monorepo
 
-Monorepo containing all VBA MCP Server packages.
+Model Context Protocol (MCP) servers for VBA extraction, analysis, and modification in Microsoft Office files.
+
+> **MCP** enables Claude to interact with Office files through specialized tools. Perfect for automating VBA analysis, refactoring, and code injection.
+
+## Features
+
+### Lite (Free - MIT)
+- Extract VBA code from Office files (.xlsm, .xlsb, .docm, .accdb)
+- List all VBA modules and procedures
+- Analyze code structure and complexity metrics
+
+### Pro (Commercial)
+- All Lite features
+- **Inject VBA code** back into Office files (Windows + COM)
+- **AI-powered refactoring** suggestions
+- **Backup management** (create, restore, list backups)
 
 ## Structure
 
@@ -23,20 +38,32 @@ vba-mcp-monorepo/
 | `vba-mcp-server` | Lite MCP server (read-only) | MIT |
 | `vba-mcp-server-pro` | Pro server (modification features) | Commercial |
 
-## Development Setup
+## Quick Start
 
+### For Users
+
+```bash
+# Install Lite (free)
+pip install vba-mcp-server
+
+# Install Pro (commercial)
+pip install vba-mcp-server-pro[windows]  # Windows only
+```
+
+### For Developers
+
+See **[DEVELOPMENT.md](DEVELOPMENT.md)** for complete setup instructions.
+
+Quick install:
 ```bash
 # Create virtual environment
 python -m venv venv
-source venv/bin/activate  # or venv\Scripts\activate on Windows
+source venv/bin/activate
 
-# Install all packages in editable mode
+# Install in editable mode
 pip install -e packages/core
 pip install -e packages/lite
-pip install -e packages/pro  # Optional, for pro development
-
-# Install dev dependencies
-pip install pytest pytest-asyncio
+pip install -e packages/pro[windows]  # Windows only
 ```
 
 ## Publishing Strategy
