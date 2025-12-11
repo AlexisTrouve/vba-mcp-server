@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "vba": {
+      "command": "python",
+      "args": [
+        "C:/Users/YOUR_USERNAME/Documents/projects/vba-mcp-server/src/server.py"
+      ],
+      "description": "VBA extraction and analysis server"
+    }
+  }
+}

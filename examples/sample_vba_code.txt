@@ -1,0 +1,228 @@
+================================================================================
+EXEMPLE DE CODE VBA POUR TEST
+================================================================================
+
+Copiez ce code VBA dans Excel pour tester le VBA MCP Server :
+
+1. Ouvrez Excel
+2. Appuyez sur Alt + F11 (éditeur VBA)
+3. Insertion → Module
+4. Copiez-collez le code ci-dessous
+5. Enregistrez le fichier sous "test_simple.xlsm" dans le dossier examples/
+
+================================================================================
+CODE VBA À COPIER :
+================================================================================
+
+' Module: Module1
+' Description: Module de test pour VBA MCP Server
+' Auteur: Test
+' Date: 2025-12-11
+
+Option Explicit
+
+' ============================================================================
+' CONSTANTES
+' ============================================================================
+Const APP_NAME As String = "VBA MCP Test"
+Const VERSION As String = "1.0.0"
+
+' ============================================================================
+' VARIABLES GLOBALES
+' ============================================================================
+Public gLastResult As Double
+
+' ============================================================================
+' SUB PROCEDURES (Procédures sans valeur de retour)
+' ============================================================================
+
+Sub HelloWorld()
+    ' Affiche un simple message
+    ' Cette procédure ne prend pas de paramètres
+    MsgBox "Hello from VBA MCP Server!", vbInformation, APP_NAME
+End Sub
+
+Sub TestLoop()
+    ' Test d'une boucle simple avec calcul
+    Dim i As Integer
+    Dim total As Double
+
+    total = 0
+
+    ' Boucle de 1 à 10
+    For i = 1 To 10
+        total = total + i
+    Next i
+
+    gLastResult = total
+    MsgBox "Total calculé : " & total, vbInformation, "Résultat"
+End Sub
+
+Sub ProcessData(ByVal inputValue As String, ByRef outputValue As String)
+    ' Procédure avec paramètres en entrée et sortie
+    ' inputValue: valeur en entrée (ByVal = copie)
+    ' outputValue: valeur en sortie (ByRef = référence)
+
+    outputValue = UCase(inputValue) & " - PROCESSED"
+End Sub
+
+' ============================================================================
+' FUNCTIONS (Fonctions avec valeur de retour)
+' ============================================================================
+
+Function AddNumbers(a As Double, b As Double) As Double
+    ' Additionne deux nombres
+    ' Retourne la somme
+    AddNumbers = a + b
+End Function
+
+Function MultiplyNumbers(x As Double, y As Double) As Double
+    ' Multiplie deux nombres
+    MultiplyNumbers = x * y
+End Function
+
+Function GetCurrentInfo() As String
+    ' Retourne les informations sur l'application
+    GetCurrentInfo = APP_NAME & " v" & VERSION
+End Function
+
+Function IsEven(number As Long) As Boolean
+    ' Vérifie si un nombre est pair
+    ' Retourne True si pair, False sinon
+
+    If number Mod 2 = 0 Then
+        IsEven = True
+    Else
+        IsEven = False
+    End If
+End Function
+
+Function CalculateFactorial(n As Long) As Long
+    ' Calcule la factorielle d'un nombre (récursif)
+    ' Exemple: Factorial(5) = 5 * 4 * 3 * 2 * 1 = 120
+
+    If n <= 1 Then
+        CalculateFactorial = 1
+    Else
+        CalculateFactorial = n * CalculateFactorial(n - 1)
+    End If
+End Function
+
+' ============================================================================
+' GESTION D'ERREURS
+' ============================================================================
+
+Function DivideNumbers(numerator As Double, denominator As Double) As Variant
+    ' Division avec gestion d'erreur
+    ' Retourne le résultat ou une erreur
+
+    On Error GoTo ErrorHandler
+
+    If denominator = 0 Then
+        Err.Raise vbObjectError + 1, "DivideNumbers", "Division par zéro impossible"
+    End If
+
+    DivideNumbers = numerator / denominator
+    Exit Function
+
+ErrorHandler:
+    DivideNumbers = "ERREUR: " & Err.Description
+End Function
+
+' ============================================================================
+' MANIPULATION DE CHAÎNES
+' ============================================================================
+
+Function FormatName(firstName As String, lastName As String) As String
+    ' Formate un nom complet
+    FormatName = UCase(lastName) & ", " & firstName
+End Function
+
+Function CountWords(text As String) As Long
+    ' Compte le nombre de mots dans un texte
+    Dim words() As String
+
+    If Len(Trim(text)) = 0 Then
+        CountWords = 0
+    Else
+        words = Split(Trim(text), " ")
+        CountWords = UBound(words) + 1
+    End If
+End Function
+
+' ============================================================================
+' INTERACTION AVEC EXCEL
+' ============================================================================
+
+Sub FillRangeWithNumbers()
+    ' Remplit une plage avec des nombres
+    Dim ws As Worksheet
+    Dim i As Long
+
+    Set ws = ActiveSheet
+
+    For i = 1 To 10
+        ws.Cells(i, 1).Value = i
+        ws.Cells(i, 2).Value = i * 2
+        ws.Cells(i, 3).Value = i ^ 2
+    Next i
+
+    MsgBox "Plage remplie avec succès!", vbInformation
+End Sub
+
+Function GetCellValue(row As Long, col As Long) As Variant
+    ' Récupère la valeur d'une cellule
+    GetCellValue = ActiveSheet.Cells(row, col).Value
+End Function
+
+' ============================================================================
+' TESTS ET DEBUG
+' ============================================================================
+
+Sub RunAllTests()
+    ' Exécute tous les tests
+    Dim result As String
+
+    Debug.Print "========================================="
+    Debug.Print "Démarrage des tests VBA MCP..."
+    Debug.Print "========================================="
+
+    ' Test 1: Addition
+    Debug.Print "Test 1: AddNumbers(5, 3) = " & AddNumbers(5, 3)
+
+    ' Test 2: Multiplication
+    Debug.Print "Test 2: MultiplyNumbers(4, 7) = " & MultiplyNumbers(4, 7)
+
+    ' Test 3: Pair/Impair
+    Debug.Print "Test 3: IsEven(10) = " & IsEven(10)
+    Debug.Print "Test 3: IsEven(7) = " & IsEven(7)
+
+    ' Test 4: Factorielle
+    Debug.Print "Test 4: CalculateFactorial(5) = " & CalculateFactorial(5)
+
+    ' Test 5: Division
+    Debug.Print "Test 5: DivideNumbers(10, 2) = " & DivideNumbers(10, 2)
+
+    ' Test 6: Formatage nom
+    Debug.Print "Test 6: FormatName('John', 'Doe') = " & FormatName("John", "Doe")
+
+    ' Test 7: Comptage mots
+    Debug.Print "Test 7: CountWords('Hello World Test') = " & CountWords("Hello World Test")
+
+    Debug.Print "========================================="
+    Debug.Print "Tests terminés!"
+    Debug.Print "========================================="
+
+    MsgBox "Tests exécutés avec succès! Voir la fenêtre Exécution (Ctrl+G)", vbInformation
+End Sub
+
+================================================================================
+FIN DU CODE VBA
+================================================================================
+
+NOTES :
+- Ce code contient 15 procédures/fonctions de test
+- Il démontre différentes fonctionnalités VBA : boucles, conditions, récursion,
+  gestion d'erreurs, manipulation de chaînes, interaction Excel
+- Le VBA MCP Server devrait être capable d'extraire et d'analyser tout ce code
+- Pour tester : lancez RunAllTests() dans Excel, puis testez l'extraction MCP
