@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vba-mcp-monorepo"
+version = "0.1.0"
+description = "Monorepo for VBA MCP Server packages"
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "Alexis Trouve", email = "alexistrouve.pro@gmail.com" }
+]
+requires-python = ">=3.8"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "hatch>=1.7.0",
+]
+
+# Development: install all packages in editable mode
+all = [
+    "vba-mcp-core",
+    "vba-mcp-server",
+    "vba-mcp-server-pro",
+]
+
+[tool.hatch.envs.default]
+dependencies = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

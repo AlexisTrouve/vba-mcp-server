@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vba-mcp-server"
+version = "0.1.0"
+description = "MCP server for VBA extraction and analysis from Microsoft Office files"
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "Alexis Trouve", email = "alexistrouve.pro@gmail.com" }
+]
+keywords = ["vba", "excel", "office", "mcp", "claude-code", "code-analysis"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "vba-mcp-core>=0.1.0",
+    "mcp>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+]
+
+[project.scripts]
+vba-mcp-server = "vba_mcp_lite.server:run"
+
+[project.urls]
+Homepage = "https://github.com/AlexisTrouve/vba-mcp-server"
+Repository = "https://github.com/AlexisTrouve/vba-mcp-server"
+Issues = "https://github.com/AlexisTrouve/vba-mcp-server/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vba_mcp_lite"]

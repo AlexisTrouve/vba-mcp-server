@@ -1,0 +1,70 @@
+# === PUBLIC REPO .gitignore ===
+# Copy this file to .gitignore when pushing to public GitHub
+
+# EXCLUDE PRO PACKAGE FROM PUBLIC REPO
+packages/pro/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+# lib/ and lib64/ at root only (not in packages/)
+/lib/
+/lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Build
+*.manifest
+*.spec
+
+# Environment variables
+.env
+.env.local
+*.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backup files
+*.bak
+*.backup
+.vba_backups/
+
+# Office temp files
+~$*.xl*
+~$*.doc*
