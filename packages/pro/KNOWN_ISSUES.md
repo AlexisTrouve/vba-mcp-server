@@ -376,6 +376,52 @@ Must close file before injection.
 
 ---
 
+### 7. WSL Environment Limitations
+
+**Description:**
+VBA MCP Pro has limited functionality when running in WSL (Windows Subsystem for Linux).
+
+**Symptoms:**
+- Error: `Property 'Excel.Application.Visible' can not be set.`
+- Excel windows appear during automation (cannot be hidden)
+- Some COM properties fail to set
+
+**Root Cause:**
+pywin32 COM automation requires native Windows Python. WSL runs Linux binaries and cannot properly access Windows COM objects, even though Excel is installed on the Windows host.
+
+**Impact:**
+- ⚠️ Operations continue but Excel may be visible
+- ⚠️ Some properties (Visible, DisplayAlerts) fail gracefully
+- ✅ VBA injection still works
+- ✅ Macro execution still works
+
+**Workarounds:**
+1. **Run on native Windows Python** (recommended):
+   - Install Python on Windows (not in WSL)
+   - Install vba-mcp-server-pro with Windows Python
+   - Run from Windows Command Prompt or PowerShell
+
+2. **Call Windows Python from WSL:**
+   ```bash
+   /mnt/c/Python311/python.exe -m vba_mcp_pro.server
+   ```
+
+3. **Accept visible Excel windows:**
+   - VBA MCP gracefully handles Visible property failures
+   - Operations continue with default visibility settings
+
+**Mitigation in Code:**
+v0.4.0+ added graceful error handling for COM properties:
+- `_configure_excel_app()` helper with try-except wrappers
+- Logging warnings instead of failures
+- Operations continue even if properties fail
+
+**References:**
+- GitHub Issue: pywin32 #1513 "WSL not supported"
+- Technical limitation: COM is Windows-specific
+
+---
+
 ## Workarounds and Best Practices
 
 ### Best Practice #1: Always Use `validate_vba_code` First

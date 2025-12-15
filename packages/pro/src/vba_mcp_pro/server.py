@@ -11,11 +11,45 @@ License: Commercial (See LICENSE file)
 
 import asyncio
 import sys
+import platform
+import logging
 from pathlib import Path
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+
+def _check_wsl_environment():
+    """
+    Detect if running in WSL and log a warning.
+
+    WSL (Windows Subsystem for Linux) cannot properly run pywin32 COM automation
+    because COM is Windows-specific. This will cause Excel.Application.Visible
+    and other properties to fail.
+
+    Returns:
+        bool: True if WSL detected, False otherwise
+    """
+    if platform.system() != "Windows":
+        try:
+            with open("/proc/version", "r") as f:
+                if "microsoft" in f.read().lower():
+                    logger.warning(
+                        "WSL DETECTED: VBA MCP Pro is running in WSL. "
+                        "COM automation has limited functionality in WSL. "
+                        "For full functionality, run on native Windows Python. "
+                        "See documentation for WSL workarounds."
+                    )
+                    return True
+        except FileNotFoundError:
+            pass
+
+    return False
+
 
 # Core tools (from lite)
 from vba_mcp_core.tools import extract_vba_tool, list_modules_tool, analyze_structure_tool
@@ -682,6 +716,9 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
 async def main():
     """Main entry point for the MCP server."""
+    # Check for WSL environment and log warning if detected
+    _check_wsl_environment()
+
     # Initialize session manager
     manager = OfficeSessionManager.get_instance()
     manager.start_cleanup_task()

@@ -267,8 +267,20 @@ class OfficeSessionManager:
         try:
             # Create COM application
             app = win32com.client.Dispatch(app_name)
-            app.Visible = True  # Always visible for interactive use
-            app.DisplayAlerts = False  # Suppress prompts
+
+            # Try to set Visible=True, but continue if it fails (WSL compatibility)
+            try:
+                app.Visible = True  # Always visible for interactive use
+                logger.debug("App.Visible set to True (interactive mode)")
+            except Exception as e:
+                logger.warning(f"Could not set App.Visible=True: {e}. Continuing anyway.")
+
+            # Try to set DisplayAlerts=False, but continue if it fails
+            try:
+                app.DisplayAlerts = False  # Suppress prompts
+                logger.debug("App.DisplayAlerts set to False")
+            except Exception as e:
+                logger.warning(f"Could not set App.DisplayAlerts=False: {e}")
 
             # Open file
             file_obj = self._open_file(app, app_type, file_path, read_only)

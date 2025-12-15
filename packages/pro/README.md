@@ -46,6 +46,32 @@ On Windows, for full VBA injection support:
 pip install vba-mcp-server-pro[windows]
 ```
 
+## Platform Requirements
+
+### Windows (Native) - RECOMMENDED ✅
+- Full support for all features
+- VBA injection, validation, and execution
+- No limitations
+
+### Windows (WSL) - LIMITED SUPPORT ⚠️
+- **Known Issue:** `Excel.Application.Visible` property cannot be set in WSL
+- **Impact:** Excel windows may be visible during automation (Visible=False fails)
+- **Workaround:** VBA MCP gracefully handles this - operations continue despite error
+- **Recommendation:** For best experience, run on native Windows Python
+
+**WSL Setup:**
+```bash
+# Option 1: Run Windows Python from WSL
+/mnt/c/Python311/python.exe -m vba_mcp_pro.server
+
+# Option 2: Install on Windows and connect from WSL
+# (See KNOWN_ISSUES.md for full WSL guide)
+```
+
+### macOS / Linux - NOT SUPPORTED ❌
+- pywin32 and COM automation are Windows-only
+- Use Lite package for read-only VBA extraction
+
 ## Configuration
 
 ```json

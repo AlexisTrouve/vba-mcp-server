@@ -15,6 +15,54 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _configure_excel_app(app, visible: bool = False, display_alerts: bool = False):
+    """
+    Configure Excel application properties with graceful error handling.
+
+    In WSL or service environments, some properties may not be settable.
+    This function tries to set them but continues if they fail.
+
+    Args:
+        app: Excel.Application COM object
+        visible: Whether Excel should be visible
+        display_alerts: Whether to show alerts
+
+    Returns:
+        dict: Status of each property setting
+    """
+    status = {
+        'visible': False,
+        'display_alerts': False,
+        'screen_updating': False
+    }
+
+    # Try to set Visible
+    try:
+        app.Visible = visible
+        status['visible'] = True
+        logger.debug(f"Excel.Visible set to {visible}")
+    except Exception as e:
+        logger.warning(f"Could not set Excel.Visible={visible}: {e}. Continuing anyway.")
+
+    # Try to set DisplayAlerts
+    try:
+        app.DisplayAlerts = display_alerts
+        status['display_alerts'] = True
+        logger.debug(f"Excel.DisplayAlerts set to {display_alerts}")
+    except Exception as e:
+        logger.warning(f"Could not set Excel.DisplayAlerts={display_alerts}: {e}")
+
+    # Try to set ScreenUpdating (performance optimization)
+    try:
+        app.ScreenUpdating = False
+        status['screen_updating'] = True
+        logger.debug("Excel.ScreenUpdating set to False")
+    except Exception as e:
+        logger.warning(f"Could not set Excel.ScreenUpdating=False: {e}")
+
+    return status
+
+
 def _detect_non_ascii(code: str) -> Tuple[bool, str]:
     """
     Detect non-ASCII characters in VBA code.
@@ -195,13 +243,21 @@ async def _verify_injection(
         file_ext = file_path.suffix.lower()
         if file_ext in ['.xlsm', '.xlsb', '.xls']:
             app = win32com.client.Dispatch("Excel.Application")
-            app.Visible = False
-            app.DisplayAlerts = False
+            _configure_excel_app(app, visible=False, display_alerts=False)
             file_obj = app.Workbooks.Open(str(file_path), ReadOnly=True)
         elif file_ext in ['.docm', '.doc']:
             app = win32com.client.Dispatch("Word.Application")
-            app.Visible = False
-            app.DisplayAlerts = False
+            # Word also has Visible property, handle gracefully
+            try:
+                app.Visible = False
+                logger.debug("Word.Visible set to False")
+            except Exception as e:
+                logger.warning(f"Could not set Word.Visible=False: {e}. Continuing anyway.")
+            try:
+                app.DisplayAlerts = False
+                logger.debug("Word.DisplayAlerts set to False")
+            except Exception as e:
+                logger.warning(f"Could not set Word.DisplayAlerts=False: {e}")
             file_obj = app.Documents.Open(str(file_path), ReadOnly=True)
         else:
             return False, f"Unsupported file type for verification: {file_ext}"
