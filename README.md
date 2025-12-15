@@ -4,6 +4,12 @@ Model Context Protocol (MCP) servers for VBA extraction, analysis, and modificat
 
 > **MCP** enables Claude to interact with Office files through specialized tools. Perfect for automating VBA analysis, refactoring, and code injection.
 
+## 🚀 Quick Start
+
+**→ READ THIS FIRST:** [START_HERE.md](START_HERE.md)
+
+Complete setup guide with 3 simple steps (5 minutes).
+
 ## Features
 
 ### Lite (Free - MIT)
@@ -11,11 +17,28 @@ Model Context Protocol (MCP) servers for VBA extraction, analysis, and modificat
 - List all VBA modules and procedures
 - Analyze code structure and complexity metrics
 
-### Pro (Commercial)
+### Pro (Commercial) - v0.3.0
 - All Lite features
 - **Inject VBA code** back into Office files (Windows + COM)
+- **VBA code validation** - Validate VBA syntax before injection
+- **List macros** - Discover all public macros in Office files
 - **AI-powered refactoring** suggestions
 - **Backup management** (create, restore, list backups)
+- **Interactive Office automation**
+  - Open Excel/Word/Access visibly on screen
+  - Run VBA macros with parameters (improved error handling)
+  - Read/write Excel data as JSON
+  - Persistent sessions (files stay open between operations)
+  - Auto-cleanup after 1-hour timeout
+- **Excel Tables (NEW v0.3.0)** - 6 tools for structured table operations
+  - List all Excel Tables (ListObjects)
+  - Insert/delete rows in worksheets or tables
+  - Insert/delete columns by letter, number, or header name
+  - Create Excel Tables from ranges with formatting
+  - Read/write table data with column selection
+- **Enhanced reliability** - Automatic backups, validation, and rollback on errors
+
+**Total: 21 MCP tools** (15 Pro + 6 Lite)
 
 ## Structure
 
