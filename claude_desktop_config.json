@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "vba-mcp-pro": {
+      "command": "python",
+      "args": [
+        "-m",
+        "vba_mcp_pro.server"
+      ],
+      "cwd": "C:\\Users\\alexi\\Documents\\projects\\vba-mcp-monorepo",
+      "env": {
+        "PYTHONPATH": "C:\\Users\\alexi\\Documents\\projects\\vba-mcp-monorepo\\packages\\core\\src;C:\\Users\\alexi\\Documents\\projects\\vba-mcp-monorepo\\packages\\lite\\src;C:\\Users\\alexi\\Documents\\projects\\vba-mcp-monorepo\\packages\\pro\\src"
+      }
+    }
+  }
+}

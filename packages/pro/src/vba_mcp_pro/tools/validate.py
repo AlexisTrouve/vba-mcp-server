@@ -35,10 +35,15 @@ async def validate_vba_code_tool(
         raise RuntimeError("VBA validation requires Windows + Microsoft Office")
 
     # Check for non-ASCII
-    from .inject import _detect_non_ascii
+    from .inject import _detect_non_ascii, _check_vba_syntax
     has_non_ascii, ascii_error = _detect_non_ascii(code)
     if has_non_ascii:
         return f"### VBA Validation Failed\n\n{ascii_error}"
+
+    # PRE-CHECK: Basic syntax validation (before creating temp file)
+    syntax_ok, syntax_error = _check_vba_syntax(code)
+    if not syntax_ok:
+        return f"### VBA Validation Failed\n\n{syntax_error}"
 
     # Create temporary file
     import tempfile

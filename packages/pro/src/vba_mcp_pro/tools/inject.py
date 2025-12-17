@@ -151,6 +151,177 @@ def _suggest_ascii_replacement(code: str) -> Tuple[str, str]:
         return code, "No common Unicode characters found to replace automatically."
 
 
+def _normalize_vba_code(code: str) -> str:
+    """
+    Normalize VBA code for comparison.
+
+    VBA editor may add/remove blank lines, normalize whitespace, etc.
+    This function normalizes code to make comparison more reliable.
+
+    Args:
+        code: VBA code to normalize
+
+    Returns:
+        Normalized code string
+    """
+    lines = code.splitlines()
+    normalized_lines = []
+
+    for line in lines:
+        # Keep the line but strip trailing whitespace
+        # Don't strip leading whitespace as indentation matters in VBA
+        normalized_lines.append(line.rstrip())
+
+    # Remove leading and trailing blank lines
+    while normalized_lines and not normalized_lines[0].strip():
+        normalized_lines.pop(0)
+    while normalized_lines and not normalized_lines[-1].strip():
+        normalized_lines.pop()
+
+    return '\n'.join(normalized_lines)
+
+
+def _check_vba_syntax(code: str) -> Tuple[bool, Optional[str]]:
+    """
+    Check VBA code syntax for common errors using pattern matching.
+
+    This performs basic syntax checks before attempting COM-based validation.
+
+    Args:
+        code: VBA code to check
+
+    Returns:
+        (success, error_message) tuple
+    """
+    lines = code.splitlines()
+
+    # Track block nesting
+    if_count = 0
+    for_count = 0
+    while_count = 0
+    do_count = 0
+    with_count = 0
+    select_count = 0
+    sub_count = 0
+    function_count = 0
+
+    for line_num, line in enumerate(lines, 1):
+        stripped = line.strip()
+
+        # Skip empty lines and comments
+        if not stripped or stripped.startswith("'") or stripped.startswith("Rem "):
+            continue
+
+        # Remove inline comments for analysis
+        if "'" in stripped:
+            # Simple approach: split on first '
+            stripped = stripped.split("'")[0].strip()
+
+        # Check for block start/end
+        # If/Then/End If
+        if stripped.startswith("If ") and " Then" in stripped and not stripped.endswith(" _"):
+            # Check if it's a single-line If or multi-line If
+            # Single-line: If condition Then statement (something after Then on same line)
+            # Multi-line: If condition Then (nothing or just comment after Then)
+            after_then = stripped.split(" Then", 1)[1].strip()
+            # Remove any inline comment from after_then
+            if "'" in after_then:
+                after_then = after_then.split("'")[0].strip()
+
+            # If there's nothing after Then, or just a colon, it's multi-line
+            if not after_then or after_then == ":":
+                if_count += 1
+            # Otherwise it's single-line If (doesn't need End If)
+        elif stripped.startswith("ElseIf ") and " Then" in stripped:
+            pass  # ElseIf doesn't change count
+        elif stripped.startswith("Else") and not stripped.startswith("ElseIf"):
+            pass  # Else doesn't change count
+        elif stripped.startswith("End If") or stripped == "End If":
+            if_count -= 1
+            if if_count < 0:
+                return False, f"Line {line_num}: 'End If' without matching 'If'"
+
+        # For/Next
+        elif stripped.startswith("For "):
+            for_count += 1
+        elif stripped.startswith("Next"):
+            for_count -= 1
+            if for_count < 0:
+                return False, f"Line {line_num}: 'Next' without matching 'For'"
+
+        # While/Wend
+        elif stripped.startswith("While "):
+            while_count += 1
+        elif stripped.startswith("Wend"):
+            while_count -= 1
+            if while_count < 0:
+                return False, f"Line {line_num}: 'Wend' without matching 'While'"
+
+        # Do/Loop
+        elif stripped.startswith("Do") and (stripped == "Do" or stripped.startswith("Do While") or stripped.startswith("Do Until")):
+            do_count += 1
+        elif stripped.startswith("Loop"):
+            do_count -= 1
+            if do_count < 0:
+                return False, f"Line {line_num}: 'Loop' without matching 'Do'"
+
+        # With/End With
+        elif stripped.startswith("With "):
+            with_count += 1
+        elif stripped.startswith("End With"):
+            with_count -= 1
+            if with_count < 0:
+                return False, f"Line {line_num}: 'End With' without matching 'With'"
+
+        # Select/End Select
+        elif stripped.startswith("Select Case "):
+            select_count += 1
+        elif stripped.startswith("End Select"):
+            select_count -= 1
+            if select_count < 0:
+                return False, f"Line {line_num}: 'End Select' without matching 'Select Case'"
+
+        # Sub/End Sub
+        elif stripped.startswith("Sub ") or stripped.startswith("Public Sub ") or stripped.startswith("Private Sub "):
+            sub_count += 1
+        elif stripped.startswith("End Sub"):
+            sub_count -= 1
+            if sub_count < 0:
+                return False, f"Line {line_num}: 'End Sub' without matching 'Sub'"
+
+        # Function/End Function
+        elif stripped.startswith("Function ") or stripped.startswith("Public Function ") or stripped.startswith("Private Function "):
+            function_count += 1
+        elif stripped.startswith("End Function"):
+            function_count -= 1
+            if function_count < 0:
+                return False, f"Line {line_num}: 'End Function' without matching 'Function'"
+
+    # Check for unclosed blocks
+    errors = []
+    if if_count > 0:
+        errors.append(f"{if_count} unclosed 'If' block(s) - missing 'End If'")
+    if for_count > 0:
+        errors.append(f"{for_count} unclosed 'For' loop(s) - missing 'Next'")
+    if while_count > 0:
+        errors.append(f"{while_count} unclosed 'While' loop(s) - missing 'Wend'")
+    if do_count > 0:
+        errors.append(f"{do_count} unclosed 'Do' loop(s) - missing 'Loop'")
+    if with_count > 0:
+        errors.append(f"{with_count} unclosed 'With' block(s) - missing 'End With'")
+    if select_count > 0:
+        errors.append(f"{select_count} unclosed 'Select Case' block(s) - missing 'End Select'")
+    if sub_count > 0:
+        errors.append(f"{sub_count} unclosed 'Sub' procedure(s) - missing 'End Sub'")
+    if function_count > 0:
+        errors.append(f"{function_count} unclosed 'Function' procedure(s) - missing 'End Function'")
+
+    if errors:
+        return False, "VBA Syntax Error:\n  " + "\n  ".join(errors)
+
+    return True, None
+
+
 def _compile_vba_module(vb_module) -> Tuple[bool, Optional[str]]:
     """
     Validate a VBA module by forcing VBA to parse the code.
@@ -181,6 +352,11 @@ def _compile_vba_module(vb_module) -> Tuple[bool, Optional[str]]:
             full_code = code_module.Lines(1, line_count)
         except pythoncom.com_error as e:
             return False, f"Failed to read code: {str(e)}"
+
+        # PRE-CHECK: Basic syntax validation
+        syntax_ok, syntax_error = _check_vba_syntax(full_code)
+        if not syntax_ok:
+            return False, syntax_error
 
         # Use ProcOfLine to force semantic checks on each line
         # This triggers VBA's internal parser more thoroughly
@@ -234,7 +410,8 @@ async def _verify_injection(
     import win32com.client
     import pythoncom
 
-    pythoncom.CoInitialize()
+    # Don't call CoInitialize - we're already in an initialized COM context
+    # from the session manager
     app = None
     file_obj = None
 
@@ -271,9 +448,19 @@ async def _verify_injection(
                 if code_module.CountOfLines > 0:
                     actual_code = code_module.Lines(1, code_module.CountOfLines)
 
-                    # Compare code (strip whitespace for comparison)
-                    if actual_code.strip() != expected_code.strip():
-                        return False, "Code mismatch in saved file"
+                    # Normalize whitespace for comparison
+                    # VBA may add extra blank lines or normalize whitespace
+                    expected_normalized = _normalize_vba_code(expected_code)
+                    actual_normalized = _normalize_vba_code(actual_code)
+
+                    logger.debug(f"Expected code length: {len(expected_normalized)}, Actual: {len(actual_normalized)}")
+
+                    if actual_normalized != expected_normalized:
+                        # Log the difference for debugging
+                        logger.warning(f"Code mismatch detected:")
+                        logger.warning(f"Expected (first 200 chars): {expected_normalized[:200]}")
+                        logger.warning(f"Actual (first 200 chars): {actual_normalized[:200]}")
+                        return False, f"Code mismatch in saved file (expected {len(expected_normalized)} chars, got {len(actual_normalized)} chars)"
                 else:
                     return False, "Module exists but is empty"
                 break
@@ -283,6 +470,7 @@ async def _verify_injection(
         return True, None
 
     except Exception as e:
+        logger.error(f"Verification exception: {str(e)}", exc_info=True)
         return False, f"Verification failed: {str(e)}"
 
     finally:
@@ -299,10 +487,7 @@ async def _verify_injection(
             except Exception as e:
                 logger.warning(f"Error quitting app during verification: {e}")
 
-        try:
-            pythoncom.CoUninitialize()
-        except Exception as e:
-            logger.warning(f"Error uninitializing COM during verification: {e}")
+        # Don't call CoUninitialize - we didn't call CoInitialize
 
 
 async def inject_vba_tool(
