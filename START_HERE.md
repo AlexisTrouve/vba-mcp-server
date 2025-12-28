@@ -36,7 +36,7 @@ Everything has been prepared automatically. You just need to complete 3 manual s
 
 ---
 
-### Step 2: Configure Claude Desktop (2 minutes)
+### Step 2: Configure Claude Code (2 minutes)
 
 #### Option A: Copy the Configuration File (Easiest)
 
@@ -44,10 +44,11 @@ Everything has been prepared automatically. You just need to complete 3 manual s
    ```
    C:\Users\alexi\Documents\projects\vba-mcp-monorepo\claude_desktop_config.json
    ```
+   (Note: This is an example config file for reference)
 
 2. **To this location:**
    ```
-   C:\Users\alexi\AppData\Roaming\Claude\claude_desktop_config.json
+   %USERPROFILE%\.claude\config.json
    ```
 
    **If the file already exists:** Open it and merge the content (add the "vba-mcp-pro" entry to the "mcpServers" section)
@@ -56,7 +57,7 @@ Everything has been prepared automatically. You just need to complete 3 manual s
 
 1. Open (or create):
    ```
-   C:\Users\alexi\AppData\Roaming\Claude\claude_desktop_config.json
+   %USERPROFILE%\.claude\config.json
    ```
 
 2. Paste this content:
@@ -77,10 +78,10 @@ Everything has been prepared automatically. You just need to complete 3 manual s
 
 ---
 
-### Step 3: Test in Claude Desktop (1 minute)
+### Step 3: Test in Claude Code (1 minute)
 
-1. **Completely close** Claude Desktop (check system tray!)
-2. **Restart** Claude Desktop
+1. **Completely close** Claude Code (check system tray!)
+2. **Restart** Claude Code
 3. **Look for:** Small hammer icon 🔨 in bottom-right (means MCP connected)
 4. **Type this prompt:**
    ```
@@ -93,7 +94,7 @@ Everything has been prepared automatically. You just need to complete 3 manual s
 
 ## 🎯 Quick Test (30 seconds)
 
-Once Claude Desktop shows the tools, try this:
+Once Claude Code shows the tools, try this:
 
 ```
 Open C:\Users\alexi\Documents\projects\vba-mcp-monorepo\test.xlsm in Excel
@@ -147,7 +148,7 @@ In test.xlsm:
 | `START_HERE.md` | **← You are here** - Quick start guide |
 | `SETUP_INSTRUCTIONS.md` | Detailed setup & troubleshooting |
 | `QUICK_TEST_PROMPTS.md` | 13 copy-paste test prompts |
-| `claude_desktop_config.json` | MCP configuration (copy to AppData) |
+| `claude_desktop_config.json` | MCP configuration example (for reference) |
 | `start_vba_mcp.bat` | Alternative launcher script |
 | `test.xlsm` | Test Excel file with VBA macros |
 | `../vba-mcp-demo/` | Complete demo project with examples |
@@ -191,7 +192,7 @@ Files stay open between operations (1-hour timeout):
 - **Files auto-close** after 1 hour of inactivity (prevents memory leaks)
 - **Automatic backups** are created before any VBA injection
 - **Multiple files** can be open simultaneously
-- **Claude Desktop logs** are helpful for debugging (Help → View Logs)
+- **Claude Code logs** are helpful for debugging (%USERPROFILE%\.claude\logs\mcp*.log)
 
 ---
 
@@ -207,14 +208,14 @@ Files stay open between operations (1-hour timeout):
 ## 📞 Need Help?
 
 **Check logs:**
-- Claude Desktop: Help → View Logs
+- Claude Code: %USERPROFILE%\.claude\logs\mcp*.log
 - Or run manually: `start_vba_mcp.bat` (see errors in console)
 
 **Common issues:**
-- "No MCP servers connected" → Check JSON syntax in config
+- "No MCP servers connected" → Check JSON syntax in config.json
 - "Cannot run macro" → Enable Excel Trust Settings (Step 1)
 - "File is locked" → Close file in Excel manually
-- "Module not found" → Check PYTHONPATH in config
+- "Module not found" → Check PYTHONPATH in config.json
 
 ---
 

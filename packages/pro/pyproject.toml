@@ -27,6 +27,9 @@ requires-python = ">=3.8"
 dependencies = [
     "vba-mcp-core>=0.1.0",
     "mcp>=1.0.0",
+    "starlette>=0.27.0",
+    "uvicorn>=0.23.0",
+    "sse-starlette>=1.6.0",
 ]
 
 [project.optional-dependencies]
@@ -40,6 +43,7 @@ dev = [
 
 [project.scripts]
 vba-mcp-server-pro = "vba_mcp_pro.server:run"
+vba-mcp-server-pro-http = "vba_mcp_pro.http_server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/vba_mcp_pro"]

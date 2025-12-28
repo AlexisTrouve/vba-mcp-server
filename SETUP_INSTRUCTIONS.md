@@ -8,7 +8,7 @@
 - Server code verified and ready
 
 ⚠️ **You Need to Do Manually:**
-- Configure Claude Desktop
+- Configure Claude Code
 - Enable VBA trust settings in Excel
 - Test the MCP server
 
@@ -26,13 +26,13 @@
 
 ---
 
-## Step 2: Configure Claude Desktop
+## Step 2: Configure Claude Code
 
 ### Option A: Copy Configuration (Recommended)
 
 Create or edit this file:
 ```
-C:\Users\alexi\AppData\Roaming\Claude\claude_desktop_config.json
+C:\Users\alexi\.claude\config.json
 ```
 
 Add this configuration:
@@ -66,7 +66,7 @@ set PYTHONPATH=C:\Users\alexi\Documents\projects\vba-mcp-monorepo\packages\core\
 python -m vba_mcp_pro.server
 ```
 
-Then configure Claude Desktop to use:
+Then configure Claude Code to use:
 ```json
 {
   "mcpServers": {
@@ -79,10 +79,10 @@ Then configure Claude Desktop to use:
 
 ---
 
-## Step 3: Restart Claude Desktop
+## Step 3: Restart Claude Code
 
-1. **Completely close** Claude Desktop (check system tray)
-2. **Restart** Claude Desktop
+1. **Completely close** Claude Code (check system tray)
+2. **Restart** Claude Code
 3. You should see a small hammer icon 🔨 in the bottom-right corner indicating MCP is connected
 
 ---
@@ -91,7 +91,7 @@ Then configure Claude Desktop to use:
 
 ### Test 1: Check Available Tools
 
-In Claude Desktop, type:
+In Claude Code, type:
 ```
 What VBA MCP tools do you have available?
 ```
@@ -164,7 +164,7 @@ Excel should close automatically.
 
 ### Issue: "No MCP servers connected"
 
-**Solution:** Check claude_desktop_config.json syntax:
+**Solution:** Check config.json syntax:
 - All paths use double backslashes `\\` or forward slashes `/`
 - No trailing commas in JSON
 - File encoding is UTF-8
@@ -251,9 +251,9 @@ C:\Users\alexi\Documents\projects\vba-mcp-demo
 
 **Configuration file:**
 ```
-C:\Users\alexi\AppData\Roaming\Claude\claude_desktop_config.json
+C:\Users\alexi\.claude\config.json
 ```
 
 ---
 
-**Need help?** Check the logs in Claude Desktop (Help → View Logs) or run the server manually to see detailed error messages.
+**Need help?** Check the logs in Claude Code (%USERPROFILE%\.claude\logs\mcp*.log) or run the server manually to see detailed error messages.

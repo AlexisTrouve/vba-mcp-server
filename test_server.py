@@ -74,7 +74,7 @@ async def test_list_tools():
             print(f"⚠ WARNING: Expected {EXPECTED_TOOL_COUNT} tools, found {len(tools)}")
 
         print("\nNext steps:")
-        print("1. Restart Claude Desktop to load the updated server")
+        print("1. Restart Claude Code to load the updated server")
         print("2. Test with prompts from QUICK_TEST_PROMPTS.md")
         print("3. Try the new Excel Tables features!")
 

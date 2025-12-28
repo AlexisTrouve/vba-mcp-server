@@ -323,7 +323,7 @@ cd /mnt/c/Users/alexi/Documents/projects/vba-mcp-monorepo
 pytest packages/pro/tests/test_vba_validation.py -v
 ```
 
-### 2. Tests Manuels avec Claude Desktop
+### 2. Tests Manuels avec Claude Code
 
 **Test #1: Validation VBA**
 ```
@@ -350,7 +350,7 @@ Run the HelloWorld function in test.xlsm
 Utiliser le workflow de validation dans `QUICK_TEST_PROMPTS.md` (test section "Validation Workflow")
 
 ### 3. Vérification Finale
-- [ ] Redémarrer Claude Desktop
+- [ ] Redémarrer Claude Code
 - [ ] Vérifier que 14 outils sont disponibles
 - [ ] Tester chaque nouveau tool (validate_vba_code, list_macros)
 - [ ] Vérifier que run_macro trouve maintenant les macros
@@ -392,7 +392,7 @@ Utiliser le workflow de validation dans `QUICK_TEST_PROMPTS.md` (test section "V
 
 **La version 0.2.0 est prête pour le déploiement!**
 
-**Prochaine étape recommandée:** Tests manuels sur Windows avec Claude Desktop.
+**Prochaine étape recommandée:** Tests manuels sur Windows avec Claude Code.
 
 ---
 

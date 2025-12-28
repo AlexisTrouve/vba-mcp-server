@@ -50,13 +50,13 @@ Excel → Fichier → Options → Centre de gestion de la confidentialité
 → Coche "Faire confiance à l'accès au modèle objet du projet VBA"
 ```
 
-**Étape 2:** Configure Claude Desktop
+**Étape 2:** Configure Claude Code
 ```
-Copie: claude_desktop_config.json
-Vers: C:\Users\alexi\AppData\Roaming\Claude\claude_desktop_config.json
+Copie: claude_desktop_config.json (exemple pour référence)
+Vers: %USERPROFILE%\.claude\config.json
 ```
 
-**Étape 3:** Redémarre Claude Desktop et teste
+**Étape 3:** Redémarre Claude Code et teste
 
 ---
 
@@ -130,7 +130,7 @@ Si aucune erreur n'apparaît immédiatement, c'est bon! (Ctrl+C pour arrêter)
 
 ### Test 2: Premier prompt dans Claude
 
-Une fois configuré, tape dans Claude Desktop:
+Une fois configuré, tape dans Claude Code:
 ```
 Quels outils VBA MCP as-tu disponibles?
 ```
@@ -248,7 +248,7 @@ Avant de tester, assure-toi que:
 - [ ] Excel est installé
 - [ ] Confiance VBA est activée dans Excel
 - [ ] Les packages sont installés en mode éditable
-- [ ] Claude Desktop est installé
+- [ ] Claude Code est installé
 
 ---
 
@@ -270,7 +270,7 @@ Avant de tester, assure-toi que:
 
 ### Logs et Debugging
 
-**Claude Desktop logs:**
+**Claude Code logs:**
 ```
 Help → View Logs
 ```
@@ -286,7 +286,7 @@ python -m vba_mcp_pro.server
 
 ## 🎓 Prochaines Étapes
 
-1. **Configure Claude Desktop** (2 minutes)
+1. **Configure Claude Code** (2 minutes)
 2. **Teste avec test.xlsm** (5 minutes)
 3. **Explore le projet de démo** (15 minutes)
 4. **Essaye avec tes fichiers** (∞)
@@ -315,8 +315,8 @@ python -m vba_mcp_pro.server
 
 **Ce qu'il te faut faire:**
 1. Activer confiance VBA dans Excel (1 min)
-2. Copier config dans Claude Desktop (1 min)
-3. Redémarrer Claude Desktop (30 sec)
+2. Copier config dans Claude Code (1 min)
+3. Redémarrer Claude Code (30 sec)
 4. Tester (2 min)
 
 **Temps total:** 5 minutes

@@ -14,9 +14,9 @@
 - [ ] pywin32 installé : `pip install pywin32`
 - [ ] MCP SDK installé : `pip install mcp`
 
-### 2. Configuration Claude Desktop
+### 2. Configuration Claude Code
 
-**Fichier:** `%APPDATA%\Claude\claude_desktop_config.json`
+**Fichier:** `%USERPROFILE%\.claude\config.json`
 
 Utilise cette configuration :
 
@@ -71,12 +71,12 @@ Utilise cette configuration :
 
 ---
 
-## 🚀 Redémarrer Claude Desktop
+## 🚀 Redémarrer Claude Code
 
 ### Sur Windows :
 
-1. **Ferme** complètement Claude Desktop (vérifier la barre des tâches)
-2. **Relance** Claude Desktop
+1. **Ferme** complètement Claude Code (vérifier la barre des tâches)
+2. **Relance** Claude Code
 3. Attends 5-10 secondes que les serveurs MCP se connectent
 4. Vérifie dans une nouvelle conversation :
 
@@ -163,10 +163,10 @@ List all macros in C:\Users\alexi\Documents\projects\vba-mcp-monorepo\test.xlsm
 
 ### Serveur ne se connecte pas
 
-1. Vérifie les logs Claude Desktop : `%APPDATA%\Claude\logs\mcp*.log`
+1. Vérifie les logs Claude Code : `%USERPROFILE%\.claude\logs\mcp*.log`
 2. Vérifie que Python est dans le PATH
 3. Vérifie que pywin32 et mcp sont installés
-4. Vérifie les chemins dans claude_desktop_config.json
+4. Vérifie les chemins dans config.json
 
 ### "Cannot run macro"
 
@@ -197,7 +197,7 @@ List all macros in C:\Users\alexi\Documents\projects\vba-mcp-monorepo\test.xlsm
 
 ### Tests Fonctionnels (à faire sur Windows)
 
-- [ ] Claude Desktop se connecte au serveur
+- [ ] Claude Code se connecte au serveur
 - [ ] 21 outils visibles dans Claude
 - [ ] Nouveaux outils Excel Tables fonctionnent
 - [ ] Outils existants fonctionnent toujours
@@ -233,7 +233,7 @@ List all macros in C:\Users\alexi\Documents\projects\vba-mcp-monorepo\test.xlsm
 
 Quand tout fonctionne, tu devrais pouvoir :
 
-1. ✅ Voir 21 outils dans Claude Desktop
+1. ✅ Voir 21 outils dans Claude Code
 2. ✅ Créer des tableaux Excel avec `create_table`
 3. ✅ Manipuler les lignes/colonnes des tableaux
 4. ✅ Lire/écrire des données de tableaux structurés

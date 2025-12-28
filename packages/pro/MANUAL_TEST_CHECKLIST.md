@@ -5,7 +5,7 @@
 **Prerequisites:**
 - Windows OS
 - Microsoft Office (Excel/Word) installed
-- Claude Desktop with VBA MCP Pro configured
+- Claude Code with VBA MCP Pro configured
 - Sample Excel files (.xlsm) ready
 
 ---
@@ -136,7 +136,7 @@
    - ✅ NO security warnings or prompts
    - ✅ Executed without manual intervention
 
-5. **Check logs** (Claude Desktop → Help → View Logs):
+5. **Check logs** (Claude Code logs):
    - Search for "AutomationSecurity"
    - ✅ Should see: "AutomationSecurity: 2 → 1" (lowered)
    - ✅ Should see: "AutomationSecurity restored: 2" (restored)
@@ -335,7 +335,7 @@ If any test fails:
    - Screenshots if relevant
 
 2. **Check logs:**
-   - Claude Desktop → Help → View Logs
+   - Claude Code logs at %USERPROFILE%\.claude\logs\mcp*.log
    - Search for "vba-mcp-pro"
    - Copy relevant error stack traces
 

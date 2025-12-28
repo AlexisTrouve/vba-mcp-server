@@ -73,6 +73,32 @@ pip install vba-mcp-server
 pip install vba-mcp-server-pro[windows]  # Windows only
 ```
 
+### HTTP/SSE Transport (Cross-Platform)
+
+**NEW**: Run the server on Windows and connect from any OS (WSL, macOS, Linux)!
+
+```bash
+# On Windows - Start HTTP server
+vba-mcp-server-pro-http --host 0.0.0.0 --port 8000
+
+# Configure client (any OS)
+{
+  "mcpServers": {
+    "vba-pro": {
+      "url": "http://YOUR_WINDOWS_IP:8000/sse"
+    }
+  }
+}
+```
+
+**Perfect for:**
+- 🐧 Connecting from WSL to Windows
+- 🍎 Connecting from macOS to Windows server
+- 🌐 Team setups with shared Windows server
+- 📦 Docker containers accessing Windows host
+
+See **[packages/pro/HTTP_SETUP.md](packages/pro/HTTP_SETUP.md)** for complete setup guide.
+
 ### For Developers
 
 See **[DEVELOPMENT.md](DEVELOPMENT.md)** for complete setup instructions.

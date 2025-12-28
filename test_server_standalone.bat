@@ -44,7 +44,7 @@ echo ========================================
 echo [SUCCESS] Server is working!
 echo ========================================
 echo.
-echo Next step: Configure Claude Desktop
+echo Next step: Configure Claude Code
 echo See: START_HERE.md
 echo.
 pause

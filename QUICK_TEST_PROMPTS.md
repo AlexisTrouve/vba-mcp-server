@@ -1,6 +1,6 @@
 # Quick Test Prompts for VBA MCP Pro
 
-Copy-paste these prompts into Claude Desktop to test the VBA MCP server.
+Copy-paste these prompts into Claude Code to test the VBA MCP server.
 
 ---
 
@@ -347,7 +347,7 @@ C:\Users\alexi\Documents\projects\vba-mcp-demo\examples\report-generator.xlsm
 → Close the file in Excel manually
 
 **"No MCP servers connected"**
-→ Restart Claude Desktop, check config file
+→ Restart Claude Code, check config file
 
 **Macro doesn't return value**
 → It might be a Sub (no return) instead of Function (has return)

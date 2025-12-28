@@ -74,6 +74,8 @@ pip install vba-mcp-server-pro[windows]
 
 ## Configuration
 
+### stdio Transport (Default)
+
 ```json
 {
   "mcpServers": {
@@ -83,6 +85,28 @@ pip install vba-mcp-server-pro[windows]
   }
 }
 ```
+
+### HTTP/SSE Transport (Cross-Platform)
+
+Perfect for WSL, macOS, or remote access:
+
+**Start server** (Windows):
+```bash
+vba-mcp-server-pro-http --host 0.0.0.0 --port 8000
+```
+
+**Configure client** (any OS):
+```json
+{
+  "mcpServers": {
+    "vba-pro": {
+      "url": "http://YOUR_WINDOWS_IP:8000/sse"
+    }
+  }
+}
+```
+
+See **[HTTP_SETUP.md](HTTP_SETUP.md)** for complete guide.
 
 ## Usage
 

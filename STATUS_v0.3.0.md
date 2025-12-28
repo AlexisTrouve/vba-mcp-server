@@ -61,7 +61,7 @@
 
 ### Tests Fonctionnels
 
-- [ ] **Redémarrer Claude Desktop** (voir RESTART_GUIDE.md)
+- [ ] **Redémarrer Claude Code** (voir RESTART_GUIDE.md)
 - [ ] **Vérifier 21 outils** dans Claude
 - [ ] **Tester list_tables** sur test.xlsm
 - [ ] **Tester create_table**
@@ -110,19 +110,19 @@ test_server_standalone.bat
 Server has 21 tools
 ```
 
-### Option 2: Redémarrer Claude Desktop
+### Option 2: Redémarrer Claude Code
 
 **Suivre:** `RESTART_GUIDE.md`
 
-1. Fermer Claude Desktop complètement
+1. Fermer Claude Code complètement
 2. Attendre 5 secondes
-3. Relancer Claude Desktop
+3. Relancer Claude Code
 4. Vérifier icône marteau 🔨
 5. Tester: "What VBA MCP tools do you have available?"
 
 ### Option 3: Test Rapide Excel Tables
 
-**Dans Claude Desktop:**
+**Dans Claude Code:**
 ```
 In test.xlsm:
 1. Create an Excel table named "TestData" from range A1:C10 on Sheet1
@@ -166,7 +166,7 @@ In test.xlsm:
 ### Immédiat (Maintenant)
 
 1. **Lire** `RESTART_GUIDE.md`
-2. **Redémarrer** Claude Desktop
+2. **Redémarrer** Claude Code
 3. **Vérifier** que 21 outils apparaissent
 4. **Tester** un outil Excel Tables basique
 
@@ -233,9 +233,9 @@ In test.xlsm:
 
 ### Logs
 
-**Claude Desktop:**
+**Claude Code:**
 ```
-Help → View Logs
+%USERPROFILE%\.claude\logs\mcp*.log
 Chercher: vba-mcp-pro
 ```
 
@@ -258,7 +258,7 @@ test_server_standalone.bat
 - [x] Guides de test créés
 
 **À faire maintenant:**
-- [ ] Redémarrer Claude Desktop
+- [ ] Redémarrer Claude Code
 - [ ] Vérifier 21 outils
 - [ ] Tester Excel Tables
 - [ ] Confirmer non-régression
@@ -267,6 +267,6 @@ test_server_standalone.bat
 
 **Version:** 0.3.0
 **Statut:** PRÊT POUR TEST
-**Action Requise:** REDÉMARRER CLAUDE DESKTOP
+**Action Requise:** REDÉMARRER CLAUDE CODE
 
 🚀 **Tout est prêt ! Suis le RESTART_GUIDE.md !** 🚀

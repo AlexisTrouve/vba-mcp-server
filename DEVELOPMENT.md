@@ -182,9 +182,9 @@ pytest tests/
 
 ## Configuration MCP
 
-### Claude Desktop - Lite Version
+### Claude Code - Lite Version
 
-Ajouter dans `claude_desktop_config.json` :
+Ajouter dans `config.json` :
 
 ```json
 {
@@ -196,7 +196,7 @@ Ajouter dans `claude_desktop_config.json` :
 }
 ```
 
-### Claude Desktop - Pro Version
+### Claude Code - Pro Version
 
 ```json
 {
@@ -351,7 +351,7 @@ cd packages/pro && python -m build
 ### Flow d'utilisation
 
 ```
-User (Claude Desktop)
+User (Claude Code)
     |
     | MCP Protocol (stdio)
     v

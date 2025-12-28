@@ -2,7 +2,7 @@
 
 ## Pourquoi Redémarrer ?
 
-Après avoir mis à jour le code du serveur VBA MCP Pro, tu dois redémarrer Claude Desktop pour que les changements soient pris en compte.
+Après avoir mis à jour le code du serveur VBA MCP Pro, tu dois redémarrer Claude Code pour que les changements soient pris en compte.
 
 **Changements v0.3.0:**
 - ✅ 6 nouveaux outils Excel Tables ajoutés
@@ -12,11 +12,11 @@ Après avoir mis à jour le code du serveur VBA MCP Pro, tu dois redémarrer Cla
 
 ## 🚀 Étapes de Redémarrage (Windows)
 
-### 1. Fermer Claude Desktop COMPLÈTEMENT
+### 1. Fermer Claude Code COMPLÈTEMENT
 
 **Important:** Ne pas juste minimiser !
 
-1. **Clic droit** sur l'icône Claude Desktop dans la barre des tâches
+1. **Clic droit** sur l'icône Claude Code dans la barre des tâches
 2. **Sélectionne** "Quitter" ou "Exit"
 3. **Vérifier** dans la zone de notification (system tray) que Claude n'est pas en arrière-plan
 4. **Si encore présent:** Ouvrir le Gestionnaire des tâches (Ctrl+Shift+Esc) et terminer le processus "Claude"
@@ -25,9 +25,9 @@ Après avoir mis à jour le code du serveur VBA MCP Pro, tu dois redémarrer Cla
 
 Laisse le temps au système de libérer les ressources.
 
-### 3. Redémarrer Claude Desktop
+### 3. Redémarrer Claude Code
 
-1. **Clique** sur l'icône Claude Desktop pour relancer
+1. **Clique** sur l'icône Claude Code pour relancer
 2. **Attends** 5-10 secondes que le serveur MCP se connecte
 3. **Cherche** l'icône marteau 🔨 en bas à droite (indique que le serveur MCP est connecté)
 
@@ -37,7 +37,7 @@ Laisse le temps au système de libérer les ressources.
 
 ### Test 1: Compter les Outils
 
-Ouvre une nouvelle conversation dans Claude Desktop et tape:
+Ouvre une nouvelle conversation dans Claude Code et tape:
 
 ```
 What VBA MCP tools do you have available?
@@ -70,7 +70,7 @@ List all Excel tables in C:\Users\alexi\Documents\projects\vba-mcp-monorepo\test
 ### Le serveur ne se connecte pas (pas d'icône 🔨)
 
 **Vérifier les logs:**
-1. Dans Claude Desktop: **Help → View Logs**
+1. Dans Claude Code: **%USERPROFILE%\.claude\logs\mcp*.log**
 2. Cherche les erreurs dans les logs MCP
 3. Vérifie particulièrement les lignes avec `vba-mcp-pro`
 
@@ -79,7 +79,7 @@ List all Excel tables in C:\Users\alexi\Documents\projects\vba-mcp-monorepo\test
 **Erreur "Module not found"**
 ```
 Vérifie le PYTHONPATH dans:
-C:\Users\alexi\AppData\Roaming\Claude\claude_desktop_config.json
+%USERPROFILE%\.claude\config.json
 
 Doit contenir:
 "PYTHONPATH": "C:\\Users\\alexi\\Documents\\projects\\vba-mcp-monorepo\\packages\\core\\src;C:\\Users\\alexi\\Documents\\projects\\vba-mcp-monorepo\\packages\\lite\\src;C:\\Users\\alexi\\Documents\\projects\\vba-mcp-monorepo\\packages\\pro\\src"
@@ -94,7 +94,7 @@ Ou spécifie le chemin complet dans la config:
 
 **Erreur JSON syntax**
 ```
-Utilise un validateur JSON en ligne pour vérifier claude_desktop_config.json
+Utilise un validateur JSON en ligne pour vérifier config.json
 Vérifie les virgules, guillemets, accolades
 ```
 
@@ -105,12 +105,12 @@ Vérifie les virgules, guillemets, accolades
 **Cause:** Cache ou ancienne version du serveur chargée
 
 **Solution:**
-1. Ferme Claude Desktop **complètement**
+1. Ferme Claude Code **complètement**
 2. Supprime le cache (optionnel):
    ```
-   Supprimer: C:\Users\alexi\AppData\Roaming\Claude\Cache
+   Supprimer: %USERPROFILE%\.claude\cache
    ```
-3. Redémarre Claude Desktop
+3. Redémarre Claude Code
 4. Vérifie avec "What VBA MCP tools do you have available?"
 
 ---
@@ -163,15 +163,15 @@ Vérifie les virgules, guillemets, accolades
 [SUCCESS] Server is working!
 ```
 
-Si tu vois des erreurs ici, c'est un problème de code Python, pas de configuration Claude Desktop.
+Si tu vois des erreurs ici, c'est un problème de code Python, pas de configuration Claude Code.
 
 ---
 
 ## 📊 Checklist de Redémarrage
 
-- [ ] 1. Fermer Claude Desktop complètement (vérifier system tray)
+- [ ] 1. Fermer Claude Code complètement (vérifier system tray)
 - [ ] 2. Attendre 5 secondes
-- [ ] 3. Relancer Claude Desktop
+- [ ] 3. Relancer Claude Code
 - [ ] 4. Attendre l'icône marteau 🔨 (5-10 secondes)
 - [ ] 5. Tester: "What VBA MCP tools do you have available?"
 - [ ] 6. Vérifier que 21 outils sont listés
@@ -217,10 +217,10 @@ Après un redémarrage réussi:
 1. Crée un fichier `restart_claude.bat`:
    ```batch
    @echo off
-   echo Fermeture de Claude Desktop...
+   echo Fermeture de Claude Code...
    taskkill /F /IM "Claude.exe" 2>nul
    timeout /t 3 /nobreak >nul
-   echo Redémarrage de Claude Desktop...
+   echo Redémarrage de Claude Code...
    start "" "C:\Users\alexi\AppData\Local\Programs\Claude\Claude.exe"
    echo Done!
    ```
