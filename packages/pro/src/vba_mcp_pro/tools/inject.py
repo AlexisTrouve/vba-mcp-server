@@ -151,7 +151,7 @@ def _suggest_ascii_replacement(code: str) -> Tuple[str, str]:
         return code, "No common Unicode characters found to replace automatically."
 
 
-def _normalize_vba_code(code: str) -> str:
+def _normalize_vba_code(code: str, strip_access_defaults: bool = True) -> str:
     """
     Normalize VBA code for comparison.
 
@@ -160,6 +160,9 @@ def _normalize_vba_code(code: str) -> str:
 
     Args:
         code: VBA code to normalize
+        strip_access_defaults: If True, strip Access-specific default lines
+                              like "Option Compare Database" that Access adds
+                              automatically to new modules
 
     Returns:
         Normalized code string
@@ -167,7 +170,20 @@ def _normalize_vba_code(code: str) -> str:
     lines = code.splitlines()
     normalized_lines = []
 
+    # Access-specific lines that are automatically added
+    access_defaults = [
+        "Option Compare Database",
+        "Option Compare Text",
+        "Option Compare Binary",
+    ]
+
     for line in lines:
+        stripped_line = line.strip()
+
+        # Skip Access default lines if requested
+        if strip_access_defaults and stripped_line in access_defaults:
+            continue
+
         # Keep the line but strip trailing whitespace
         # Don't strip leading whitespace as indentation matters in VBA
         normalized_lines.append(line.rstrip())
@@ -388,6 +404,59 @@ def _compile_vba_module(vb_module) -> Tuple[bool, Optional[str]]:
         raise
 
 
+async def _verify_injection_via_session(
+    session,  # OfficeSession
+    module_name: str,
+    expected_code: str
+) -> Tuple[bool, Optional[str]]:
+    """
+    Verify VBA injection via existing session (for Access files).
+
+    Since Access locks the file, we can't reopen it for verification.
+    Instead, we verify by reading the code from the session's VB project.
+
+    Args:
+        session: OfficeSession instance
+        module_name: Name of module to verify
+        expected_code: Code that should be in the module
+
+    Returns:
+        (success, error_message) tuple
+    """
+    try:
+        vb_project = session.vb_project
+
+        # Search for the module
+        for component in vb_project.VBComponents:
+            if component.Name == module_name:
+                code_module = component.CodeModule
+                if code_module.CountOfLines > 0:
+                    actual_code = code_module.Lines(1, code_module.CountOfLines)
+
+                    # Normalize whitespace for comparison
+                    expected_normalized = _normalize_vba_code(expected_code)
+                    actual_normalized = _normalize_vba_code(actual_code)
+
+                    logger.debug(f"Session verify - Expected: {len(expected_normalized)} chars, Actual: {len(actual_normalized)} chars")
+
+                    if actual_normalized != expected_normalized:
+                        logger.warning(f"Session verify code mismatch:")
+                        logger.warning(f"Expected (first 200): {expected_normalized[:200]}")
+                        logger.warning(f"Actual (first 200): {actual_normalized[:200]}")
+                        return False, f"Code mismatch (expected {len(expected_normalized)} chars, got {len(actual_normalized)} chars)"
+                else:
+                    return False, "Module exists but is empty"
+                break
+        else:
+            return False, f"Module '{module_name}' not found in session"
+
+        return True, None
+
+    except Exception as e:
+        logger.error(f"Session verification exception: {str(e)}", exc_info=True)
+        return False, f"Session verification failed: {str(e)}"
+
+
 async def _verify_injection(
     file_path: Path,
     module_name: str,
@@ -436,10 +505,24 @@ async def _verify_injection(
             except Exception as e:
                 logger.warning(f"Could not set Word.DisplayAlerts=False: {e}")
             file_obj = app.Documents.Open(str(file_path), ReadOnly=True)
+            vb_project = file_obj.VBProject
+        elif file_ext in ['.accdb', '.mdb']:
+            app = win32com.client.Dispatch("Access.Application")
+            try:
+                app.Visible = False
+                logger.debug("Access.Visible set to False")
+            except Exception as e:
+                logger.warning(f"Could not set Access.Visible=False: {e}. Continuing anyway.")
+            # Access doesn't support ReadOnly in OpenCurrentDatabase
+            # But we only read, so it's safe
+            app.OpenCurrentDatabase(str(file_path))
+            file_obj = app  # Access uses app itself as file container
+            vb_project = app.VBE.ActiveVBProject
         else:
             return False, f"Unsupported file type for verification: {file_ext}"
 
-        vb_project = file_obj.VBProject
+        if file_ext not in ['.accdb', '.mdb']:
+            vb_project = file_obj.VBProject
 
         # Search for the module
         for component in vb_project.VBComponents:
@@ -475,11 +558,18 @@ async def _verify_injection(
 
     finally:
         # Clean up COM objects
-        if file_obj:
+        # For Access, file_obj == app, so we only close database and quit
+        if file_obj and file_obj != app:
             try:
                 file_obj.Close(SaveChanges=False)
             except Exception as e:
                 logger.warning(f"Error closing file during verification: {e}")
+        elif file_obj == app:
+            # Access: close current database before quitting
+            try:
+                app.CloseCurrentDatabase()
+            except Exception as e:
+                logger.warning(f"Error closing Access database during verification: {e}")
 
         if app:
             try:
@@ -550,10 +640,15 @@ async def inject_vba_tool(
         )
 
     # Create backup if requested
+    # Note: If file is already open in an existing session, backup may fail
+    backup_path = None
     if create_backup:
-        backup_path = _create_backup(path)
-    else:
-        backup_path = None
+        try:
+            backup_path = _create_backup(path)
+        except PermissionError as e:
+            # File is likely open in another process or session
+            logger.warning(f"Could not create backup (file may be open): {e}")
+            # Continue without backup - the session will handle save/restore
 
     # Determine application type
     file_ext = path.suffix.lower()
@@ -733,20 +828,39 @@ async def _inject_vba_via_session(
         elif session.app_type == "Word":
             session.file_obj.Save()
         elif session.app_type == "Access":
-            # Access auto-saves
-            pass
+            # Access auto-saves, but we can force a save via DoCmd
+            try:
+                session.app.DoCmd.Save()
+            except Exception as e:
+                # DoCmd.Save may fail, Access still auto-saves
+                logger.debug(f"DoCmd.Save failed (expected for some objects): {e}")
 
         # POST-SAVE VERIFICATION: Verify injection actually persisted
-        success, error = await _verify_injection(session.file_path, module_name, code)
+        if session.app_type == "Access":
+            # For Access, verify via existing session (file is locked by session)
+            success, error = await _verify_injection_via_session(session, module_name, code)
+        else:
+            # For Excel/Word, verify by reopening the file
+            success, error = await _verify_injection(session.file_path, module_name, code)
+
         if not success:
             # Verification failed - restore backup if exists
             if backup_path and backup_path.exists():
-                import shutil
-                shutil.copy2(backup_path, session.file_path)
-                raise ValueError(
-                    f"Injection verification failed: {error}\n"
-                    f"File restored from backup: {backup_path}"
-                )
+                if session.app_type != "Access":
+                    # Can only copy over file if it's not locked
+                    import shutil
+                    shutil.copy2(backup_path, session.file_path)
+                    raise ValueError(
+                        f"Injection verification failed: {error}\n"
+                        f"File restored from backup: {backup_path}"
+                    )
+                else:
+                    # For Access, we need to close session, restore, reopen
+                    raise ValueError(
+                        f"Injection verification failed: {error}\n"
+                        f"Backup available at: {backup_path}\n"
+                        f"Close Access manually and restore from backup if needed."
+                    )
             else:
                 raise ValueError(f"Injection verification failed: {error}")
 
