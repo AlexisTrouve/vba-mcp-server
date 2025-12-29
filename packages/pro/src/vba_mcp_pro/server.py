@@ -72,7 +72,11 @@ from .tools import (
     delete_rows_tool,
     insert_columns_tool,
     delete_columns_tool,
-    create_table_tool
+    create_table_tool,
+    # Access-specific tools
+    list_access_queries_tool,
+    run_access_query_tool,
+    list_access_tables_tool
 )
 from .session_manager import OfficeSessionManager
 
@@ -298,7 +302,7 @@ async def list_tools() -> list[Tool]:
             name="get_worksheet_data",
             description=(
                 "[PRO] Read data from Excel worksheet or Access table. "
-                "Returns JSON array."
+                "Supports filtering, SQL queries, and column selection for Access."
             ),
             inputSchema={
                 "type": "object",
@@ -309,15 +313,36 @@ async def list_tools() -> list[Tool]:
                     },
                     "sheet_name": {
                         "type": "string",
-                        "description": "Worksheet/table name"
+                        "description": "Worksheet name (Excel) or table name (Access)"
                     },
                     "range": {
                         "type": "string",
-                        "description": "Cell range (e.g., 'A1:D10') or null for entire sheet"
+                        "description": "Cell range for Excel (e.g., 'A1:D10')"
                     },
                     "include_formulas": {
                         "type": "boolean",
-                        "description": "Return formulas instead of values (default: false)"
+                        "description": "Return formulas instead of values (Excel only, default: false)"
+                    },
+                    "sql_query": {
+                        "type": "string",
+                        "description": "Custom SQL query (Access only, overrides table_name)"
+                    },
+                    "where_clause": {
+                        "type": "string",
+                        "description": "SQL WHERE clause without 'WHERE' keyword (Access only)"
+                    },
+                    "order_by": {
+                        "type": "string",
+                        "description": "SQL ORDER BY clause without 'ORDER BY' keyword (Access only)"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum records to return (Access only)"
+                    },
+                    "columns": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of specific columns to retrieve"
                     }
                 },
                 "required": ["file_path", "sheet_name"]
@@ -326,19 +351,19 @@ async def list_tools() -> list[Tool]:
         Tool(
             name="set_worksheet_data",
             description=(
-                "[PRO] Write data to Excel worksheet. "
-                "Data must be 2D array."
+                "[PRO] Write data to Excel worksheet or Access table. "
+                "Supports append and replace modes for Access."
             ),
             inputSchema={
                 "type": "object",
                 "properties": {
                     "file_path": {
                         "type": "string",
-                        "description": "Absolute path to Excel file"
+                        "description": "Absolute path to Office file"
                     },
                     "sheet_name": {
                         "type": "string",
-                        "description": "Worksheet name (created if doesn't exist)"
+                        "description": "Worksheet name (Excel) or table name (Access)"
                     },
                     "data": {
                         "type": "array",
@@ -347,11 +372,21 @@ async def list_tools() -> list[Tool]:
                     },
                     "start_cell": {
                         "type": "string",
-                        "description": "Top-left cell (default: 'A1')"
+                        "description": "Top-left cell for Excel (default: 'A1')"
                     },
                     "clear_existing": {
                         "type": "boolean",
-                        "description": "Clear sheet before writing (default: false)"
+                        "description": "Clear sheet before writing - Excel only (default: false)"
+                    },
+                    "columns": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Column names for data (Access only)"
+                    },
+                    "mode": {
+                        "type": "string",
+                        "enum": ["append", "replace"],
+                        "description": "Write mode for Access: 'append' or 'replace' (default: append)"
                     }
                 },
                 "required": ["file_path", "sheet_name", "data"]
@@ -568,6 +603,70 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["file_path", "sheet_name", "range", "table_name"]
             }
+        ),
+        # === ACCESS-SPECIFIC TOOLS ===
+        Tool(
+            name="list_access_tables",
+            description=(
+                "[PRO] List all tables in an Access database with schema information. "
+                "Shows table names, field names, types, and record counts."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Absolute path to Access database (.accdb or .mdb)"
+                    }
+                },
+                "required": ["file_path"]
+            }
+        ),
+        Tool(
+            name="list_access_queries",
+            description=(
+                "[PRO] List all saved queries in an Access database. "
+                "Shows query names, types (Select/Update/Delete), and SQL preview."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Absolute path to Access database (.accdb or .mdb)"
+                    }
+                },
+                "required": ["file_path"]
+            }
+        ),
+        Tool(
+            name="run_access_query",
+            description=(
+                "[PRO] Execute an Access query and return results. "
+                "Can run saved queries by name or execute direct SQL statements."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Absolute path to Access database (.accdb or .mdb)"
+                    },
+                    "query_name": {
+                        "type": "string",
+                        "description": "Name of saved query to execute"
+                    },
+                    "sql": {
+                        "type": "string",
+                        "description": "Direct SQL to execute (overrides query_name)"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of records to return"
+                    }
+                },
+                "required": ["file_path"]
+            }
         )
     ]
 
@@ -634,7 +733,13 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 file_path=arguments["file_path"],
                 sheet_name=arguments["sheet_name"],
                 range=arguments.get("range"),
-                include_formulas=arguments.get("include_formulas", False)
+                include_formulas=arguments.get("include_formulas", False),
+                # Access-specific parameters
+                sql_query=arguments.get("sql_query"),
+                where_clause=arguments.get("where_clause"),
+                order_by=arguments.get("order_by"),
+                limit=arguments.get("limit"),
+                columns=arguments.get("columns")
             )
         elif name == "set_worksheet_data":
             result = await set_worksheet_data_tool(
@@ -642,7 +747,10 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 sheet_name=arguments["sheet_name"],
                 data=arguments["data"],
                 start_cell=arguments.get("start_cell", "A1"),
-                clear_existing=arguments.get("clear_existing", False)
+                clear_existing=arguments.get("clear_existing", False),
+                # Access-specific parameters
+                columns=arguments.get("columns"),
+                mode=arguments.get("mode", "append")
             )
         elif name == "close_office_file":
             result = await close_office_file_tool(
@@ -700,6 +808,22 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 table_name=arguments["table_name"],
                 has_headers=arguments.get("has_headers", True),
                 style=arguments.get("style", "TableStyleMedium2")
+            )
+        # Access-specific tools
+        elif name == "list_access_tables":
+            result = await list_access_tables_tool(
+                file_path=arguments["file_path"]
+            )
+        elif name == "list_access_queries":
+            result = await list_access_queries_tool(
+                file_path=arguments["file_path"]
+            )
+        elif name == "run_access_query":
+            result = await run_access_query_tool(
+                file_path=arguments["file_path"],
+                query_name=arguments.get("query_name"),
+                sql=arguments.get("sql"),
+                limit=arguments.get("limit")
             )
         else:
             raise ValueError(f"Unknown tool: {name}")

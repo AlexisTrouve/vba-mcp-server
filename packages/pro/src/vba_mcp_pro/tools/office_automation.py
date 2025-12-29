@@ -368,7 +368,12 @@ async def get_worksheet_data_tool(
     table_name: Optional[str] = None,
     columns: Optional[List[str]] = None,
     include_headers: bool = True,
-    include_formulas: bool = False
+    include_formulas: bool = False,
+    # Access-specific parameters
+    sql_query: Optional[str] = None,
+    where_clause: Optional[str] = None,
+    order_by: Optional[str] = None,
+    limit: Optional[int] = None
 ) -> str:
     """
     Read data from Excel worksheet, table, or Access table.
@@ -377,24 +382,40 @@ async def get_worksheet_data_tool(
         file_path: Absolute path to Office file
         sheet_name: Worksheet name (Excel) or table name (Access)
         range: Cell range (e.g., 'A1:D10') or None for entire used range
-        table_name: Excel Table name (e.g., 'BudgetTable') - NEW
-        columns: List of column names to extract (e.g., ['Name', 'Age']) - NEW
-        include_headers: Include header row in output (default: true) - NEW
+        table_name: Excel Table name (e.g., 'BudgetTable')
+        columns: List of column names to extract (e.g., ['Name', 'Age'])
+        include_headers: Include header row in output (default: true)
         include_formulas: Return formulas instead of values (Excel only, default: false)
+        sql_query: Custom SQL query (Access only, overrides table_name)
+        where_clause: SQL WHERE clause without 'WHERE' keyword (Access only)
+        order_by: SQL ORDER BY clause without 'ORDER BY' keyword (Access only)
+        limit: Maximum number of records to return (Access only)
 
     Returns:
         JSON formatted data
 
     Examples:
-        # Read by range (existing)
+        # Excel - Read by range
         get_worksheet_data(file, "Sheet1", range="A1:C10")
 
-        # Read entire table (NEW)
+        # Excel - Read entire table
         get_worksheet_data(file, "Sheet1", table_name="BudgetTable")
 
-        # Read specific columns from table (NEW)
+        # Excel - Read specific columns from table
         get_worksheet_data(file, "Sheet1", table_name="BudgetTable",
                           columns=["Name", "Total"])
+
+        # Access - Read table
+        get_worksheet_data(file, "Clients")
+
+        # Access - Read with filter
+        get_worksheet_data(file, "Clients", where_clause="DateCreation > #2024-01-01#")
+
+        # Access - Custom SQL
+        get_worksheet_data(file, "", sql_query="SELECT * FROM Clients WHERE Actif = True")
+
+        # Access - With limit and order
+        get_worksheet_data(file, "Commandes", order_by="Date DESC", limit=100)
 
     Raises:
         FileNotFoundError: If file doesn't exist
@@ -415,7 +436,10 @@ async def get_worksheet_data_tool(
             include_headers, include_formulas
         )
     elif session.app_type == "Access":
-        return await _get_access_data(session, sheet_name)
+        return await _get_access_data(
+            session, sheet_name, sql_query, where_clause,
+            order_by, limit, columns
+        )
     else:
         raise ValueError(
             f"{session.app_type} does not support get_worksheet_data. "
@@ -548,25 +572,98 @@ async def _get_excel_data(
         ])
 
 
-async def _get_access_data(session, table_name: str) -> str:
-    """Extract data from Access table."""
+async def _get_access_data(
+    session,
+    table_name: str,
+    sql_query: Optional[str] = None,
+    where_clause: Optional[str] = None,
+    order_by: Optional[str] = None,
+    limit: Optional[int] = None,
+    columns: Optional[List[str]] = None
+) -> str:
+    """
+    Extract data from Access table or query.
+
+    Args:
+        session: Active Access session
+        table_name: Table name to query
+        sql_query: Custom SQL query (overrides table_name if provided)
+        where_clause: SQL WHERE clause (without 'WHERE' keyword)
+        order_by: SQL ORDER BY clause (without 'ORDER BY' keyword)
+        limit: Maximum number of records to return
+        columns: List of specific columns to retrieve
+
+    Returns:
+        Formatted JSON data with headers and rows
+    """
     try:
         db = session.app.CurrentDb()
-        rs = db.OpenRecordset(table_name)
 
-        # Get field names
+        # Build SQL query
+        if sql_query:
+            # Use custom SQL directly
+            sql = sql_query
+            query_description = f"Custom SQL: {sql[:100]}{'...' if len(sql) > 100 else ''}"
+        else:
+            # Build SELECT statement
+            if columns:
+                cols = ", ".join([f"[{col}]" for col in columns])
+            else:
+                cols = "*"
+
+            sql = f"SELECT {cols} FROM [{table_name}]"
+
+            if where_clause:
+                sql += f" WHERE {where_clause}"
+
+            if order_by:
+                sql += f" ORDER BY {order_by}"
+
+            query_description = f"Table: {table_name}"
+            if where_clause:
+                query_description += f" | WHERE: {where_clause}"
+            if order_by:
+                query_description += f" | ORDER BY: {order_by}"
+
+        # Execute query
+        try:
+            rs = db.OpenRecordset(sql)
+        except Exception as sql_error:
+            # Try to provide helpful error message
+            raise ValueError(
+                f"SQL Error: {str(sql_error)}\n"
+                f"Query: {sql}\n"
+                f"Check table name, column names, and SQL syntax."
+            )
+
+        # Get field names from result
         fields = [field.Name for field in rs.Fields]
 
-        # Read all records
+        # Read records with optional limit
         data = []
+        count = 0
+
         if not rs.EOF:
             rs.MoveFirst()
             while not rs.EOF:
-                row = [rs.Fields(field).Value for field in fields]
+                # Check limit
+                if limit is not None and count >= limit:
+                    break
+
+                # Read row
+                row = []
+                for i in range(rs.Fields.Count):
+                    value = rs.Fields(i).Value
+                    row.append(value)
                 data.append(row)
+
                 rs.MoveNext()
+                count += 1
 
         rs.Close()
+
+        # Check if more records exist (for limit info)
+        limited = limit is not None and count >= limit
 
         # Format with headers
         result = {
@@ -574,23 +671,202 @@ async def _get_access_data(session, table_name: str) -> str:
             "rows": data
         }
 
-        return "\n".join([
+        # Build output message
+        output_lines = [
             "**Data Retrieved from Access**",
             "",
             f"Database: {session.file_path.name}",
-            f"Table: {table_name}",
-            f"Records: {len(data)}",
+            f"Query: {query_description}",
+            f"Records: {len(data)}" + (" (limited)" if limited else ""),
             f"Fields: {len(fields)}",
+        ]
+
+        if columns:
+            output_lines.append(f"Columns selected: {', '.join(columns)}")
+
+        if limit:
+            output_lines.append(f"Limit: {limit}")
+
+        output_lines.extend([
             "",
             "```json",
             json.dumps(result, indent=2, default=str),
             "```"
         ])
 
+        return "\n".join(output_lines)
+
+    except ValueError:
+        # Re-raise ValueError (SQL errors with helpful messages)
+        raise
+    except Exception as e:
+        # Try to list available tables for helpful error
+        try:
+            db = session.app.CurrentDb()
+            tables = []
+            for td in db.TableDefs:
+                if not td.Name.startswith("MSys"):  # Skip system tables
+                    tables.append(td.Name)
+            tables_list = ", ".join(tables) if tables else "(no tables found)"
+        except Exception:
+            tables_list = "(unable to list tables)"
+
+        raise ValueError(
+            f"Failed to read from Access: {str(e)}\n"
+            f"Table/Query: {table_name or sql_query}\n"
+            f"Available tables: {tables_list}"
+        )
+
+
+async def _set_access_data(
+    session,
+    table_name: str,
+    data: List[List[Any]],
+    columns: Optional[List[str]] = None,
+    mode: str = "append"
+) -> str:
+    """
+    Write data to Access table.
+
+    Args:
+        session: Active Access session
+        table_name: Target table name
+        data: 2D array of values [[row1], [row2], ...]
+        columns: Column names (if None, uses table field order)
+        mode: "append" (add records) or "replace" (delete all then insert)
+
+    Returns:
+        Success message with record count
+    """
+    try:
+        db = session.app.CurrentDb()
+
+        # Validate mode
+        if mode not in ("append", "replace"):
+            raise ValueError(f"Invalid mode '{mode}'. Use 'append' or 'replace'.")
+
+        # Validate data
+        if not data:
+            raise ValueError("Data cannot be empty")
+
+        if not all(isinstance(row, list) for row in data):
+            raise ValueError("Data must be a 2D array (list of lists)")
+
+        # Replace mode: delete all existing records first
+        records_deleted = 0
+        if mode == "replace":
+            try:
+                # Count before delete
+                count_rs = db.OpenRecordset(f"SELECT COUNT(*) FROM [{table_name}]")
+                records_deleted = count_rs.Fields(0).Value or 0
+                count_rs.Close()
+
+                # Delete all records
+                db.Execute(f"DELETE FROM [{table_name}]")
+            except Exception as del_error:
+                raise ValueError(
+                    f"Failed to delete existing records: {str(del_error)}\n"
+                    f"Table: {table_name}"
+                )
+
+        # Open recordset for adding records
+        try:
+            rs = db.OpenRecordset(table_name)
+        except Exception as open_error:
+            # Try to list available tables
+            tables = []
+            try:
+                for td in db.TableDefs:
+                    if not td.Name.startswith("MSys"):
+                        tables.append(td.Name)
+            except Exception:
+                pass
+
+            raise ValueError(
+                f"Table '{table_name}' not found or cannot be opened: {str(open_error)}\n"
+                f"Available tables: {', '.join(tables) if tables else '(none)'}"
+            )
+
+        # Get table field names if columns not specified
+        if columns is None:
+            columns = []
+            for field in rs.Fields:
+                # Skip AutoNumber fields (they auto-increment)
+                if field.Attributes & 16:  # dbAutoIncrField
+                    continue
+                columns.append(field.Name)
+
+        # Validate column count matches data
+        expected_cols = len(columns)
+        for i, row in enumerate(data):
+            if len(row) != expected_cols:
+                raise ValueError(
+                    f"Row {i+1} has {len(row)} values, expected {expected_cols} "
+                    f"(columns: {', '.join(columns)})"
+                )
+
+        # Insert records
+        inserted = 0
+        errors = []
+
+        for row_idx, row in enumerate(data):
+            try:
+                rs.AddNew()
+
+                for col_idx, col_name in enumerate(columns):
+                    try:
+                        rs.Fields(col_name).Value = row[col_idx]
+                    except Exception as field_error:
+                        errors.append(f"Row {row_idx+1}, Column '{col_name}': {str(field_error)}")
+
+                rs.Update()
+                inserted += 1
+
+            except Exception as row_error:
+                errors.append(f"Row {row_idx+1}: {str(row_error)}")
+
+        rs.Close()
+
+        # Build result message
+        output_lines = [
+            "**Data Written to Access**",
+            "",
+            f"Database: {session.file_path.name}",
+            f"Table: {table_name}",
+            f"Mode: {mode}",
+        ]
+
+        if mode == "replace":
+            output_lines.append(f"Records deleted: {records_deleted}")
+
+        output_lines.extend([
+            f"Records inserted: {inserted}",
+            f"Columns: {', '.join(columns)}",
+        ])
+
+        if errors:
+            output_lines.extend([
+                "",
+                f"Warnings ({len(errors)}):",
+            ])
+            for error in errors[:5]:  # Show first 5 errors
+                output_lines.append(f"  - {error}")
+            if len(errors) > 5:
+                output_lines.append(f"  ... and {len(errors) - 5} more")
+
+        output_lines.extend([
+            "",
+            "Data written successfully." if not errors else "Data written with some errors.",
+            "Changes are auto-saved in Access."
+        ])
+
+        return "\n".join(output_lines)
+
+    except ValueError:
+        raise
     except Exception as e:
         raise ValueError(
-            f"Failed to read table '{table_name}': {str(e)}\n"
-            f"Make sure the table name is correct."
+            f"Failed to write to Access table '{table_name}': {str(e)}"
         )
 
 
@@ -715,34 +991,42 @@ async def set_worksheet_data_tool(
     table_name: Optional[str] = None,
     column_mapping: Optional[dict] = None,
     append: bool = False,
-    clear_existing: bool = False
+    clear_existing: bool = False,
+    # Access-specific parameters
+    columns: Optional[List[str]] = None,
+    mode: str = "append"
 ) -> str:
     """
-    Write data to Excel worksheet or table.
+    Write data to Excel worksheet, table, or Access table.
 
     Args:
-        file_path: Absolute path to Excel file
-        sheet_name: Worksheet name (will be created if doesn't exist)
+        file_path: Absolute path to Office file
+        sheet_name: Worksheet name (Excel) or table name (Access)
         data: 2D array of values [[row1], [row2], ...]
-        start_cell: Top-left cell to start writing (default: "A1")
-        table_name: Excel Table name to write to - NEW
-        column_mapping: Map data columns to table columns (e.g., {"Name": 0, "Age": 1}) - NEW
-        append: Append rows to end of table (requires table_name) - NEW
-        clear_existing: Clear all existing data in sheet first (default: false)
+        start_cell: Top-left cell to start writing (Excel only, default: "A1")
+        table_name: Excel Table name to write to
+        column_mapping: Map data columns to table columns (e.g., {"Name": 0, "Age": 1})
+        append: Append rows to end of table (Excel tables only)
+        clear_existing: Clear all existing data in sheet first (Excel only, default: false)
+        columns: Column names for data (Access only, if None uses table order)
+        mode: Write mode for Access - "append" (add records), "replace" (delete all then insert)
 
     Returns:
-        Success message with range written
+        Success message with details
 
     Examples:
-        # Write to range (existing)
+        # Excel - Write to range
         set_worksheet_data(file, "Sheet1", data, start_cell="A1")
 
-        # Append to table (NEW)
+        # Excel - Append to table
         set_worksheet_data(file, "Sheet1", data, table_name="BudgetTable", append=True)
 
-        # Update specific columns (NEW)
-        set_worksheet_data(file, "Sheet1", data, table_name="BudgetTable",
-                          column_mapping={"Name": 0, "Total": 1})
+        # Access - Append records
+        set_worksheet_data(file, "Clients", [["Jean", "jean@email.com"]],
+                          columns=["Nom", "Email"])
+
+        # Access - Replace all data
+        set_worksheet_data(file, "TempData", data, mode="replace")
 
     Raises:
         FileNotFoundError: If file doesn't exist
@@ -756,11 +1040,13 @@ async def set_worksheet_data_tool(
     session = await manager.get_or_create_session(path, read_only=False)
     session.refresh_last_accessed()
 
-    # Only Excel supports set_worksheet_data
-    if session.app_type != "Excel":
+    # Route to appropriate handler
+    if session.app_type == "Access":
+        return await _set_access_data(session, sheet_name, data, columns, mode)
+    elif session.app_type != "Excel":
         raise ValueError(
             f"{session.app_type} does not support set_worksheet_data. "
-            f"Only Excel is supported."
+            f"Only Excel and Access are supported."
         )
 
     # Validate data
@@ -1080,3 +1366,374 @@ async def list_macros_tool(file_path: str) -> str:
 
     except Exception as e:
         raise RuntimeError(f"Error listing macros: {str(e)}")
+
+
+# =============================================================================
+# Access-specific tools
+# =============================================================================
+
+def _get_query_type_name(query_type: int) -> str:
+    """Convert Access query type constant to readable name."""
+    query_types = {
+        0: "Select",
+        1: "Crosstab",
+        2: "Delete",
+        3: "Update",
+        4: "Append",
+        5: "Make-Table",
+        6: "DDL",
+        7: "SQL Pass-Through",
+        8: "Union",
+    }
+    return query_types.get(query_type, f"Unknown ({query_type})")
+
+
+async def list_access_queries_tool(file_path: str) -> str:
+    """
+    List all queries (QueryDefs) in an Access database.
+
+    Args:
+        file_path: Path to Access database (.accdb or .mdb)
+
+    Returns:
+        Formatted list of queries with name, type, and SQL preview
+
+    Raises:
+        FileNotFoundError: If file doesn't exist
+        ValueError: If file is not an Access database
+    """
+    path = Path(file_path).resolve()
+
+    if not path.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    manager = OfficeSessionManager.get_instance()
+    session = await manager.get_or_create_session(path, read_only=True)
+    session.refresh_last_accessed()
+
+    if session.app_type != "Access":
+        raise ValueError(
+            f"list_access_queries only works with Access databases. "
+            f"Got: {session.app_type}"
+        )
+
+    try:
+        db = session.app.CurrentDb()
+        queries = []
+
+        for qd in db.QueryDefs:
+            # Skip system queries (start with ~)
+            if qd.Name.startswith("~"):
+                continue
+
+            # Truncate long SQL for preview
+            sql_preview = qd.SQL.strip()
+            if len(sql_preview) > 150:
+                sql_preview = sql_preview[:150] + "..."
+
+            queries.append({
+                "name": qd.Name,
+                "type": _get_query_type_name(qd.Type),
+                "sql": sql_preview
+            })
+
+        # Format output
+        output_lines = [
+            f"### Queries in {path.name}",
+            "",
+            f"**Total:** {len(queries)} queries",
+            ""
+        ]
+
+        if not queries:
+            output_lines.append("No queries found in this database.")
+        else:
+            for query in sorted(queries, key=lambda q: q["name"]):
+                output_lines.extend([
+                    f"#### {query['name']}",
+                    f"**Type:** {query['type']}",
+                    "```sql",
+                    query["sql"],
+                    "```",
+                    ""
+                ])
+
+        output_lines.append(
+            "**Usage:** `run_access_query(file, query_name=\"QueryName\")` "
+            "or `run_access_query(file, sql=\"SELECT ...\")`"
+        )
+
+        return "\n".join(output_lines)
+
+    except Exception as e:
+        raise RuntimeError(f"Error listing queries: {str(e)}")
+
+
+async def run_access_query_tool(
+    file_path: str,
+    query_name: Optional[str] = None,
+    sql: Optional[str] = None,
+    limit: Optional[int] = None
+) -> str:
+    """
+    Execute an Access query and return results.
+
+    Args:
+        file_path: Path to Access database (.accdb or .mdb)
+        query_name: Name of saved query to execute
+        sql: Direct SQL to execute (overrides query_name)
+        limit: Maximum number of records to return
+
+    Returns:
+        JSON formatted query results
+
+    Examples:
+        # Run saved query
+        run_access_query(file, query_name="ClientsActifs")
+
+        # Run direct SQL
+        run_access_query(file, sql="SELECT * FROM Clients WHERE Ville = 'Paris'")
+
+        # With limit
+        run_access_query(file, query_name="AllOrders", limit=100)
+
+    Raises:
+        FileNotFoundError: If file doesn't exist
+        ValueError: If neither query_name nor sql provided, or query not found
+    """
+    if not query_name and not sql:
+        raise ValueError("Either query_name or sql must be provided")
+
+    path = Path(file_path).resolve()
+
+    if not path.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    manager = OfficeSessionManager.get_instance()
+    session = await manager.get_or_create_session(path, read_only=True)
+    session.refresh_last_accessed()
+
+    if session.app_type != "Access":
+        raise ValueError(
+            f"run_access_query only works with Access databases. "
+            f"Got: {session.app_type}"
+        )
+
+    try:
+        db = session.app.CurrentDb()
+
+        # Determine SQL to execute
+        if sql:
+            query_sql = sql
+            query_description = f"Custom SQL"
+        else:
+            # Find saved query
+            try:
+                qd = db.QueryDefs(query_name)
+                query_sql = qd.SQL
+                query_description = f"Query: {query_name}"
+            except Exception:
+                # List available queries for error message
+                available = []
+                for qd in db.QueryDefs:
+                    if not qd.Name.startswith("~"):
+                        available.append(qd.Name)
+
+                raise ValueError(
+                    f"Query '{query_name}' not found.\n"
+                    f"Available queries: {', '.join(available) if available else '(none)'}"
+                )
+
+        # Execute query
+        try:
+            rs = db.OpenRecordset(query_sql)
+        except Exception as exec_error:
+            raise ValueError(
+                f"Query execution failed: {str(exec_error)}\n"
+                f"SQL: {query_sql[:200]}{'...' if len(query_sql) > 200 else ''}"
+            )
+
+        # Get field names
+        fields = [field.Name for field in rs.Fields]
+
+        # Read records
+        data = []
+        count = 0
+
+        if not rs.EOF:
+            rs.MoveFirst()
+            while not rs.EOF:
+                if limit is not None and count >= limit:
+                    break
+
+                row = []
+                for i in range(rs.Fields.Count):
+                    row.append(rs.Fields(i).Value)
+                data.append(row)
+
+                rs.MoveNext()
+                count += 1
+
+        rs.Close()
+
+        # Check if limited
+        limited = limit is not None and count >= limit
+
+        # Format result
+        result = {
+            "headers": fields,
+            "rows": data
+        }
+
+        output_lines = [
+            "**Query Results**",
+            "",
+            f"Database: {path.name}",
+            f"Query: {query_description}",
+            f"Records: {len(data)}" + (" (limited)" if limited else ""),
+            f"Fields: {len(fields)}",
+        ]
+
+        if limit:
+            output_lines.append(f"Limit: {limit}")
+
+        output_lines.extend([
+            "",
+            "```json",
+            json.dumps(result, indent=2, default=str),
+            "```"
+        ])
+
+        return "\n".join(output_lines)
+
+    except ValueError:
+        raise
+    except Exception as e:
+        raise RuntimeError(f"Error executing query: {str(e)}")
+
+
+async def list_access_tables_tool(file_path: str) -> str:
+    """
+    List all tables in an Access database with schema information.
+
+    Args:
+        file_path: Path to Access database (.accdb or .mdb)
+
+    Returns:
+        Formatted list of tables with fields and types
+
+    Raises:
+        FileNotFoundError: If file doesn't exist
+        ValueError: If file is not an Access database
+    """
+    path = Path(file_path).resolve()
+
+    if not path.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    manager = OfficeSessionManager.get_instance()
+    session = await manager.get_or_create_session(path, read_only=True)
+    session.refresh_last_accessed()
+
+    if session.app_type != "Access":
+        raise ValueError(
+            f"list_access_tables only works with Access databases. "
+            f"Got: {session.app_type}"
+        )
+
+    # Field type mapping
+    field_types = {
+        1: "Boolean",
+        2: "Byte",
+        3: "Integer",
+        4: "Long",
+        5: "Currency",
+        6: "Single",
+        7: "Double",
+        8: "Date/Time",
+        10: "Text",
+        11: "OLE Object",
+        12: "Memo",
+        15: "GUID",
+        16: "Big Integer",
+        101: "Attachment",
+        102: "Complex",
+    }
+
+    try:
+        db = session.app.CurrentDb()
+        tables = []
+
+        for td in db.TableDefs:
+            # Skip system tables
+            if td.Name.startswith("MSys") or td.Name.startswith("~"):
+                continue
+
+            # Get fields
+            fields = []
+            for field in td.Fields:
+                field_type = field_types.get(field.Type, f"Type {field.Type}")
+
+                field_info = {
+                    "name": field.Name,
+                    "type": field_type,
+                }
+
+                # Add size for text fields
+                if field.Type == 10:  # Text
+                    field_info["size"] = field.Size
+
+                # Mark primary key / auto-increment
+                if field.Attributes & 16:  # dbAutoIncrField
+                    field_info["auto_increment"] = True
+
+                fields.append(field_info)
+
+            # Get record count
+            try:
+                record_count = td.RecordCount
+            except Exception:
+                record_count = -1
+
+            tables.append({
+                "name": td.Name,
+                "fields": fields,
+                "record_count": record_count
+            })
+
+        # Format output
+        output_lines = [
+            f"### Tables in {path.name}",
+            "",
+            f"**Total:** {len(tables)} tables",
+            ""
+        ]
+
+        if not tables:
+            output_lines.append("No user tables found in this database.")
+        else:
+            for table in sorted(tables, key=lambda t: t["name"]):
+                records = table["record_count"]
+                record_str = f"{records} records" if records >= 0 else "unknown records"
+
+                output_lines.extend([
+                    f"#### {table['name']}",
+                    f"*{record_str}, {len(table['fields'])} fields*",
+                    ""
+                ])
+
+                for field in table["fields"]:
+                    field_desc = f"- **{field['name']}** ({field['type']}"
+                    if "size" in field:
+                        field_desc += f", max {field['size']}"
+                    if field.get("auto_increment"):
+                        field_desc += ", AutoNumber"
+                    field_desc += ")"
+                    output_lines.append(field_desc)
+
+                output_lines.append("")
+
+        return "\n".join(output_lines)
+
+    except Exception as e:
+        raise RuntimeError(f"Error listing tables: {str(e)}")

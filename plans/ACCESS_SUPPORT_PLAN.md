@@ -8,16 +8,16 @@
 
 ## Statut Actuel
 
-### Support Access : ~40%
+### Support Access : 100% COMPLETE
 
 | Catégorie | Excel | Access | Gap |
 |-----------|-------|--------|-----|
 | Extraction VBA | 100% | 100% | - |
-| Injection VBA | 100% | ~70% (non testé) | Tests |
-| Validation VBA | 100% | 0% | Implémenter |
-| Lecture données | 100% | 30% | Améliorer |
-| Écriture données | 100% | 0% | Implémenter |
-| Tables/Requêtes | 100% | 0% | Implémenter |
+| Injection VBA | 100% | 100% | DONE |
+| Validation VBA | 100% | 100% | DONE |
+| Lecture données | 100% | 100% | DONE |
+| Écriture données | 100% | 100% | DONE |
+| Tables/Requêtes | 100% | 100% | DONE |
 
 ---
 

@@ -17,7 +17,7 @@ Complete setup guide with 3 simple steps (5 minutes).
 - List all VBA modules and procedures
 - Analyze code structure and complexity metrics
 
-### Pro (Commercial) - v0.5.0 ✅ Production Ready
+### Pro (Commercial) - v0.6.0 ✅ Production Ready
 - All Lite features
 - **Inject VBA code** back into Office files (Windows + COM) - **100% operational** ✅
 - **VBA code validation** - Validate VBA syntax before injection with smart detection
@@ -30,15 +30,22 @@ Complete setup guide with 3 simple steps (5 minutes).
   - Read/write Excel data as JSON
   - Persistent sessions (files stay open between operations)
   - Auto-cleanup after 1-hour timeout
-- **Excel Tables (NEW v0.3.0)** - 6 tools for structured table operations
+- **Excel Tables** - 6 tools for structured table operations
   - List all Excel Tables (ListObjects)
   - Insert/delete rows in worksheets or tables
   - Insert/delete columns by letter, number, or header name
   - Create Excel Tables from ranges with formatting
   - Read/write table data with column selection
+- **Microsoft Access Support (NEW v0.6.0)** - Full Access database integration
+  - Read/write data from Access tables with SQL support
+  - Filter data with WHERE clauses and ORDER BY
+  - List all tables with schema (fields, types, record counts)
+  - List and execute saved queries (QueryDefs)
+  - Run custom SQL queries directly
+  - VBA injection and validation for Access
 - **Enhanced reliability** - Automatic backups, validation, and rollback on errors
 
-**Total: 21 MCP tools** (15 Pro + 6 Lite)
+**Total: 24 MCP tools** (18 Pro + 6 Lite)
 
 ## Structure
 
