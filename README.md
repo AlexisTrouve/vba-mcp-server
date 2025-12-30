@@ -143,17 +143,57 @@ Full monorepo including `pro/`.
 git push private main
 ```
 
+## MCP Tools Reference
+
+### Lite Tools (6)
+| Tool | Description |
+|------|-------------|
+| `extract_vba` | Extract VBA code from modules |
+| `list_modules` | List all VBA modules |
+| `analyze_structure` | Analyze code structure |
+
+### Pro Tools (18)
+| Tool | Description |
+|------|-------------|
+| `inject_vba` | Inject VBA code into modules |
+| `validate_vba` | Validate VBA syntax |
+| `run_macro` | Execute VBA macros |
+| `open_in_office` | Open file in Office application |
+| `get_worksheet_data` | Read data from Excel/Access |
+| `set_worksheet_data` | Write data to Excel/Access |
+| `list_excel_tables` | List Excel Tables |
+| `create_excel_table` | Create new Excel Table |
+| `insert_rows` | Insert rows in worksheet/table |
+| `delete_rows` | Delete rows |
+| `insert_columns` | Insert columns |
+| `delete_columns` | Delete columns |
+| `create_backup` | Create file backup |
+| `restore_backup` | Restore from backup |
+| `list_backups` | List available backups |
+| `list_access_tables` | List Access tables with schema |
+| `list_access_queries` | List saved queries |
+| `run_access_query` | Execute SQL/saved queries |
+
 ## Testing
 
 ```bash
 # Run all tests
 pytest
 
-# Run specific package tests
-pytest packages/core/tests/
-pytest packages/lite/tests/
+# Run specific tests
 pytest packages/pro/tests/
+python test_access_complete.py
 ```
+
+## Known Limitations
+
+1. **Windows only** - VBA injection requires pywin32 + COM
+2. **Trust VBA** - Enable "Trust access to VBA project object model" in Office
+3. **oletools** - Doesn't support .accdb for module listing (use COM workaround)
+
+## Roadmap
+
+See **[TODO.md](TODO.md)** for planned features.
 
 ## Author
 
