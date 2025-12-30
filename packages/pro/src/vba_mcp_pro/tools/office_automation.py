@@ -258,8 +258,25 @@ async def run_macro_tool(
                 proc_name,  # Just macro name
                 f"'{workbook_name}'!{proc_name}",  # 'Book.xlsm'!Macro
             ]
-    elif session.app_type in ["Word", "Access"]:
-        # Word/Access typically just use macro name
+    elif session.app_type == "Access":
+        # Access requires Module.Procedure format for VBA procedures
+        if module_name:
+            formats_to_try = [
+                f"{module_name}.{proc_name}",
+                proc_name,
+            ]
+        else:
+            # Try to find the procedure in all modules
+            formats_to_try = [proc_name]
+            try:
+                vb_project = session.app.VBE.ActiveVBProject
+                for component in vb_project.VBComponents:
+                    if component.Type == 1:  # Standard module
+                        formats_to_try.append(f"{component.Name}.{proc_name}")
+            except Exception:
+                pass
+    elif session.app_type == "Word":
+        # Word typically just uses macro name
         formats_to_try = [
             proc_name,
             f"{module_name}.{proc_name}" if module_name else proc_name
@@ -1469,6 +1486,13 @@ async def list_access_queries_tool(file_path: str) -> str:
         raise RuntimeError(f"Error listing queries: {str(e)}")
 
 
+def _is_action_query(sql: str) -> bool:
+    """Check if SQL is an action query (DELETE, UPDATE, INSERT, DROP, etc.)."""
+    sql_upper = sql.strip().upper()
+    action_keywords = ('DELETE', 'UPDATE', 'INSERT', 'DROP', 'ALTER', 'CREATE', 'TRUNCATE')
+    return sql_upper.startswith(action_keywords)
+
+
 async def run_access_query_tool(
     file_path: str,
     query_name: Optional[str] = None,
@@ -1478,21 +1502,28 @@ async def run_access_query_tool(
     """
     Execute an Access query and return results.
 
+    Supports both SELECT queries (returns data) and action queries
+    (DELETE, UPDATE, INSERT - returns affected row count).
+
     Args:
         file_path: Path to Access database (.accdb or .mdb)
         query_name: Name of saved query to execute
         sql: Direct SQL to execute (overrides query_name)
-        limit: Maximum number of records to return
+        limit: Maximum number of records to return (SELECT only)
 
     Returns:
-        JSON formatted query results
+        JSON formatted query results (SELECT) or action result message
 
     Examples:
         # Run saved query
         run_access_query(file, query_name="ClientsActifs")
 
-        # Run direct SQL
+        # Run direct SQL SELECT
         run_access_query(file, sql="SELECT * FROM Clients WHERE Ville = 'Paris'")
+
+        # Run action query (DELETE/UPDATE/INSERT)
+        run_access_query(file, sql="DELETE FROM Clients WHERE Inactive = True")
+        run_access_query(file, sql="UPDATE Clients SET Status = 'Active' WHERE ID = 5")
 
         # With limit
         run_access_query(file, query_name="AllOrders", limit=100)
@@ -1510,7 +1541,10 @@ async def run_access_query_tool(
         raise FileNotFoundError(f"File not found: {file_path}")
 
     manager = OfficeSessionManager.get_instance()
-    session = await manager.get_or_create_session(path, read_only=True)
+
+    # Action queries need write access
+    is_action = sql and _is_action_query(sql)
+    session = await manager.get_or_create_session(path, read_only=not is_action)
     session.refresh_last_accessed()
 
     if session.app_type != "Access":
@@ -1532,6 +1566,8 @@ async def run_access_query_tool(
                 qd = db.QueryDefs(query_name)
                 query_sql = qd.SQL
                 query_description = f"Query: {query_name}"
+                # Check if saved query is an action query
+                is_action = _is_action_query(query_sql)
             except Exception:
                 # List available queries for error message
                 available = []
@@ -1544,7 +1580,41 @@ async def run_access_query_tool(
                     f"Available queries: {', '.join(available) if available else '(none)'}"
                 )
 
-        # Execute query
+        # Execute action query (DELETE, UPDATE, INSERT, etc.)
+        if is_action:
+            try:
+                db.Execute(query_sql)
+                records_affected = db.RecordsAffected
+            except Exception as exec_error:
+                raise ValueError(
+                    f"Action query failed: {str(exec_error)}\n"
+                    f"SQL: {query_sql[:200]}{'...' if len(query_sql) > 200 else ''}"
+                )
+
+            # Determine action type for message
+            sql_upper = query_sql.strip().upper()
+            if sql_upper.startswith('DELETE'):
+                action_type = "deleted"
+            elif sql_upper.startswith('UPDATE'):
+                action_type = "updated"
+            elif sql_upper.startswith('INSERT'):
+                action_type = "inserted"
+            else:
+                action_type = "affected"
+
+            output_lines = [
+                "**Action Query Executed**",
+                "",
+                f"Database: {path.name}",
+                f"Query: {query_description}",
+                f"Records {action_type}: {records_affected}",
+                "",
+                f"SQL: `{query_sql[:100]}{'...' if len(query_sql) > 100 else ''}`"
+            ]
+
+            return "\n".join(output_lines)
+
+        # Execute SELECT query
         try:
             rs = db.OpenRecordset(query_sql)
         except Exception as exec_error:
