@@ -1,6 +1,8 @@
-# === IMPORTANT: Pro package exclusion for public repo ===
-# Uncomment the line below when pushing to PUBLIC GitHub repo
-# packages/pro/
+# === PUBLIC REPO .gitignore ===
+# Copy this file to .gitignore when pushing to public GitHub
+
+# EXCLUDE PRO PACKAGE FROM PUBLIC REPO
+packages/pro/
 
 # Python
 __pycache__/
@@ -48,19 +50,6 @@ htmlcov/
 # Build
 *.manifest
 *.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
-
-# Jupyter
-.ipynb_checkpoints
 
 # Environment variables
 .env
