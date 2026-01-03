@@ -266,7 +266,11 @@ class OfficeSessionManager:
 
         try:
             # Create COM application
-            app = win32com.client.Dispatch(app_name)
+            # Use gencache.EnsureDispatch for Access to properly wrap methods like OpenCurrentDatabase
+            if app_type == "Access":
+                app = win32com.client.gencache.EnsureDispatch(app_name)
+            else:
+                app = win32com.client.Dispatch(app_name)
 
             # Try to set Visible=True, but continue if it fails (WSL compatibility)
             try:

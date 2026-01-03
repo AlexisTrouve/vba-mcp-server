@@ -259,22 +259,9 @@ async def run_macro_tool(
                 f"'{workbook_name}'!{proc_name}",  # 'Book.xlsm'!Macro
             ]
     elif session.app_type == "Access":
-        # Access requires Module.Procedure format for VBA procedures
-        if module_name:
-            formats_to_try = [
-                f"{module_name}.{proc_name}",
-                proc_name,
-            ]
-        else:
-            # Try to find the procedure in all modules
-            formats_to_try = [proc_name]
-            try:
-                vb_project = session.app.VBE.ActiveVBProject
-                for component in vb_project.VBComponents:
-                    if component.Type == 1:  # Standard module
-                        formats_to_try.append(f"{component.Name}.{proc_name}")
-            except Exception:
-                pass
+        # Access Application.Run via COM wants JUST the procedure name, NOT Module.Procedure
+        # The module prefix causes "cannot find procedure" error
+        formats_to_try = [proc_name]  # Always try just the procedure name first
     elif session.app_type == "Word":
         # Word typically just uses macro name
         formats_to_try = [
@@ -1807,3 +1794,487 @@ async def list_access_tables_tool(file_path: str) -> str:
 
     except Exception as e:
         raise RuntimeError(f"Error listing tables: {str(e)}")
+
+
+# =============================================================================
+# Access Forms tools
+# =============================================================================
+
+async def list_access_forms_tool(file_path: str) -> str:
+    """
+    [PRO] List all forms in an Access database.
+
+    Args:
+        file_path: Path to .accdb or .mdb file
+
+    Returns:
+        Formatted list of forms with metadata
+
+    Raises:
+        FileNotFoundError: If file doesn't exist
+        ValueError: If file is not an Access database
+    """
+    path = Path(file_path).resolve()
+
+    if not path.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    manager = OfficeSessionManager.get_instance()
+    session = await manager.get_or_create_session(path, read_only=True)
+    session.refresh_last_accessed()
+
+    if session.app_type != "Access":
+        raise ValueError(
+            f"list_access_forms only works with Access databases. "
+            f"Got: {session.app_type}"
+        )
+
+    try:
+        app = session.app
+        forms = []
+
+        # Iterate through AllForms collection
+        for form in app.CurrentProject.AllForms:
+            forms.append({
+                "name": form.Name,
+                "is_loaded": form.IsLoaded,
+            })
+
+        # Format output
+        output_lines = [
+            "## Access Forms",
+            "",
+            f"**Database:** {path.name}",
+            f"**Total forms:** {len(forms)}",
+            ""
+        ]
+
+        if forms:
+            output_lines.append("| Name | Loaded |")
+            output_lines.append("|------|--------|")
+            for f in sorted(forms, key=lambda x: x["name"]):
+                loaded = "Yes" if f["is_loaded"] else "No"
+                output_lines.append(f"| {f['name']} | {loaded} |")
+        else:
+            output_lines.append("_No forms found in this database._")
+
+        output_lines.extend([
+            "",
+            "**Usage:**",
+            "- `export_form_definition` to export form as text",
+            "- `create_access_form` to create new forms",
+            "- `delete_access_form` to remove forms"
+        ])
+
+        return "\n".join(output_lines)
+
+    except Exception as e:
+        raise RuntimeError(f"Error listing forms: {str(e)}")
+
+
+async def create_access_form_tool(
+    file_path: str,
+    form_name: str,
+    record_source: Optional[str] = None,
+    form_type: str = "single"
+) -> str:
+    """
+    [PRO] Create a new Access form.
+
+    Args:
+        file_path: Path to .accdb or .mdb file
+        form_name: Name for the new form
+        record_source: Table or query name to bind to (optional)
+        form_type: "single" (default), "continuous", or "datasheet"
+
+    Returns:
+        Success message with form details
+
+    Raises:
+        FileNotFoundError: If file doesn't exist
+        ValueError: If form already exists or invalid parameters
+
+    Examples:
+        # Empty form
+        create_access_form("db.accdb", "frm_New")
+
+        # Form bound to table
+        create_access_form("db.accdb", "frm_Clients", record_source="Clients")
+
+        # Continuous form
+        create_access_form("db.accdb", "frm_List", record_source="Items",
+                          form_type="continuous")
+    """
+    path = Path(file_path).resolve()
+
+    if not path.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    manager = OfficeSessionManager.get_instance()
+    session = await manager.get_or_create_session(path, read_only=False)
+    session.refresh_last_accessed()
+
+    if session.app_type != "Access":
+        raise ValueError(
+            f"create_access_form only works with Access databases. "
+            f"Got: {session.app_type}"
+        )
+
+    try:
+        app = session.app
+
+        # Check if form already exists
+        for form in app.CurrentProject.AllForms:
+            if form.Name.lower() == form_name.lower():
+                raise ValueError(f"Form '{form_name}' already exists")
+
+        # Validate form_type
+        view_map = {"single": 0, "continuous": 1, "datasheet": 2}
+        if form_type not in view_map:
+            raise ValueError(
+                f"Invalid form_type '{form_type}'. "
+                f"Must be one of: single, continuous, datasheet"
+            )
+
+        # Create the form using CreateForm
+        # This creates a form in Design view with a temp name like "Form1"
+        frm = app.CreateForm()
+        temp_name = frm.Name
+
+        # Set record source if provided
+        if record_source:
+            frm.RecordSource = record_source
+
+        # Set default view
+        frm.DefaultView = view_map[form_type]
+
+        # Save the form first (required before closing)
+        app.DoCmd.Save(2, temp_name)  # acForm = 2
+
+        # Close the form
+        app.DoCmd.Close(2, temp_name, 1)  # acForm=2, acSaveYes=1
+
+        # Rename to the desired name if different
+        if temp_name.lower() != form_name.lower():
+            app.DoCmd.Rename(form_name, 2, temp_name)  # acForm = 2
+
+        return f"""## Form Created
+
+**Name:** {form_name}
+**Database:** {path.name}
+**Record Source:** {record_source or "None (unbound)"}
+**Type:** {form_type}
+
+Form created successfully.
+
+**Next steps:**
+- Use `export_form_definition` to view/edit the form structure as text
+- Use `import_form_definition` to import modified form definitions
+- Open the form in Access to add controls visually
+"""
+
+    except ValueError:
+        raise
+    except Exception as e:
+        raise RuntimeError(f"Error creating form: {str(e)}")
+
+
+async def delete_access_form_tool(
+    file_path: str,
+    form_name: str,
+    backup_first: bool = True
+) -> str:
+    """
+    [PRO] Delete an Access form.
+
+    Args:
+        file_path: Path to .accdb or .mdb file
+        form_name: Name of form to delete
+        backup_first: If True, export to temp folder before deleting (default: True)
+
+    Returns:
+        Confirmation message with backup path if created
+
+    Raises:
+        FileNotFoundError: If file doesn't exist
+        ValueError: If form not found
+    """
+    from datetime import datetime
+
+    path = Path(file_path).resolve()
+
+    if not path.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    manager = OfficeSessionManager.get_instance()
+    session = await manager.get_or_create_session(path, read_only=False)
+    session.refresh_last_accessed()
+
+    if session.app_type != "Access":
+        raise ValueError(
+            f"delete_access_form only works with Access databases. "
+            f"Got: {session.app_type}"
+        )
+
+    try:
+        app = session.app
+
+        # Verify form exists and get exact name
+        actual_name = None
+        for form in app.CurrentProject.AllForms:
+            if form.Name.lower() == form_name.lower():
+                actual_name = form.Name
+                break
+
+        if not actual_name:
+            # List available forms for helpful error
+            available = [f.Name for f in app.CurrentProject.AllForms]
+            raise ValueError(
+                f"Form '{form_name}' not found.\n"
+                f"Available forms: {', '.join(available) if available else '(none)'}"
+            )
+
+        # Backup if requested
+        backup_path = None
+        if backup_first:
+            backup_dir = path.parent / ".form_backups"
+            backup_dir.mkdir(exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_path = backup_dir / f"{actual_name}_{timestamp}.txt"
+            # acForm = 2
+            app.SaveAsText(2, actual_name, str(backup_path))
+
+        # Delete the form
+        # acForm = 2
+        app.DoCmd.DeleteObject(2, actual_name)
+
+        # Build result message
+        output_lines = [
+            "## Form Deleted",
+            "",
+            f"**Name:** {actual_name}",
+            f"**Database:** {path.name}",
+        ]
+
+        if backup_path:
+            output_lines.extend([
+                "",
+                f"**Backup saved:** {backup_path}",
+                "",
+                "To restore, use `import_form_definition` with the backup file."
+            ])
+
+        return "\n".join(output_lines)
+
+    except ValueError:
+        raise
+    except Exception as e:
+        raise RuntimeError(f"Error deleting form: {str(e)}")
+
+
+async def export_form_definition_tool(
+    file_path: str,
+    form_name: str,
+    output_path: Optional[str] = None
+) -> str:
+    """
+    [PRO] Export Access form definition to text file (SaveAsText).
+
+    This exports the complete form definition including:
+    - All controls and their properties
+    - Layout and positioning
+    - VBA code behind the form
+    - Event bindings
+
+    The exported file can be:
+    - Viewed to understand form structure
+    - Modified with any text editor
+    - Re-imported with import_form_definition
+    - Version controlled with Git
+
+    Args:
+        file_path: Path to .accdb or .mdb file
+        form_name: Name of form to export
+        output_path: Where to save .txt file (default: same folder as db)
+
+    Returns:
+        Path to exported file with content preview
+
+    Raises:
+        FileNotFoundError: If file doesn't exist
+        ValueError: If form not found
+    """
+    path = Path(file_path).resolve()
+
+    if not path.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    manager = OfficeSessionManager.get_instance()
+    session = await manager.get_or_create_session(path, read_only=True)
+    session.refresh_last_accessed()
+
+    if session.app_type != "Access":
+        raise ValueError(
+            f"export_form_definition only works with Access databases. "
+            f"Got: {session.app_type}"
+        )
+
+    try:
+        app = session.app
+
+        # Verify form exists and get exact name
+        actual_name = None
+        for form in app.CurrentProject.AllForms:
+            if form.Name.lower() == form_name.lower():
+                actual_name = form.Name
+                break
+
+        if not actual_name:
+            available = [f.Name for f in app.CurrentProject.AllForms]
+            raise ValueError(
+                f"Form '{form_name}' not found.\n"
+                f"Available forms: {', '.join(available) if available else '(none)'}"
+            )
+
+        # Determine output path
+        if output_path:
+            export_path = Path(output_path).resolve()
+        else:
+            export_path = path.parent / f"{actual_name}.txt"
+
+        # Ensure parent directory exists
+        export_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Export using SaveAsText
+        # acForm = 2
+        app.SaveAsText(2, actual_name, str(export_path))
+
+        # Read content for preview
+        try:
+            with open(export_path, 'r', encoding='utf-8', errors='replace') as f:
+                content = f.read()
+                preview = content[:2000]
+                if len(content) > 2000:
+                    preview += "\n... [truncated]"
+        except Exception as read_error:
+            content = ""
+            preview = f"(Could not read file: {read_error})"
+
+        return f"""## Form Exported
+
+**Form:** {actual_name}
+**Database:** {path.name}
+**Output:** {export_path}
+**Size:** {len(content)} characters
+
+### Preview
+
+```
+{preview}
+```
+
+**Next steps:**
+1. Read the full file to see complete structure
+2. Modify the content as needed
+3. Re-import with `import_form_definition`
+"""
+
+    except ValueError:
+        raise
+    except Exception as e:
+        raise RuntimeError(f"Error exporting form: {str(e)}")
+
+
+async def import_form_definition_tool(
+    file_path: str,
+    form_name: str,
+    definition_path: str,
+    overwrite: bool = False
+) -> str:
+    """
+    [PRO] Import Access form from text definition file (LoadFromText).
+
+    This imports a form definition previously exported with SaveAsText
+    or manually created/modified.
+
+    Args:
+        file_path: Path to .accdb or .mdb file
+        form_name: Name for the imported form
+        definition_path: Path to .txt definition file
+        overwrite: If True, delete existing form first (default: False)
+
+    Returns:
+        Success message
+
+    Raises:
+        FileNotFoundError: If database or definition file doesn't exist
+        ValueError: If form already exists and overwrite=False
+
+    Workflow example:
+        1. export_form_definition("db.accdb", "frm_Old")
+        2. Read and modify the .txt file
+        3. import_form_definition("db.accdb", "frm_New", "modified.txt")
+    """
+    path = Path(file_path).resolve()
+    def_path = Path(definition_path).resolve()
+
+    if not path.exists():
+        raise FileNotFoundError(f"Database not found: {file_path}")
+
+    if not def_path.exists():
+        raise FileNotFoundError(f"Definition file not found: {definition_path}")
+
+    manager = OfficeSessionManager.get_instance()
+    session = await manager.get_or_create_session(path, read_only=False)
+    session.refresh_last_accessed()
+
+    if session.app_type != "Access":
+        raise ValueError(
+            f"import_form_definition only works with Access databases. "
+            f"Got: {session.app_type}"
+        )
+
+    try:
+        app = session.app
+
+        # Check if form already exists
+        existing_form = None
+        for form in app.CurrentProject.AllForms:
+            if form.Name.lower() == form_name.lower():
+                existing_form = form.Name
+                break
+
+        if existing_form:
+            if overwrite:
+                # Delete existing form first
+                # acForm = 2
+                app.DoCmd.DeleteObject(2, existing_form)
+            else:
+                raise ValueError(
+                    f"Form '{form_name}' already exists. "
+                    f"Use overwrite=True to replace it."
+                )
+
+        # Import using LoadFromText
+        # acForm = 2
+        app.LoadFromText(2, form_name, str(def_path))
+
+        return f"""## Form Imported
+
+**Form:** {form_name}
+**Database:** {path.name}
+**Source:** {def_path}
+**Overwrite:** {overwrite}
+
+Form imported successfully.
+
+**Next steps:**
+- Open the form in Access to verify
+- Use `list_access_forms` to confirm it's listed
+- Use `export_form_definition` to re-export if needed
+"""
+
+    except ValueError:
+        raise
+    except Exception as e:
+        raise RuntimeError(f"Error importing form: {str(e)}")

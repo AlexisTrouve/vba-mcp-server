@@ -76,7 +76,17 @@ from .tools import (
     # Access-specific tools
     list_access_queries_tool,
     run_access_query_tool,
-    list_access_tables_tool
+    list_access_tables_tool,
+    # Access Forms tools
+    list_access_forms_tool,
+    create_access_form_tool,
+    delete_access_form_tool,
+    export_form_definition_tool,
+    import_form_definition_tool,
+    # Access VBA tools (COM-based)
+    extract_vba_access_tool,
+    analyze_structure_access_tool,
+    compile_vba_tool
 )
 from .session_manager import OfficeSessionManager
 
@@ -667,6 +677,197 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["file_path"]
             }
+        ),
+        # === ACCESS FORMS TOOLS ===
+        Tool(
+            name="list_access_forms",
+            description=(
+                "[PRO] List all forms in an Access database. "
+                "Shows form names and whether they are currently loaded."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Absolute path to Access database (.accdb or .mdb)"
+                    }
+                },
+                "required": ["file_path"]
+            }
+        ),
+        Tool(
+            name="create_access_form",
+            description=(
+                "[PRO] Create a new Access form. "
+                "Can create empty forms or forms bound to a table/query."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Absolute path to Access database (.accdb or .mdb)"
+                    },
+                    "form_name": {
+                        "type": "string",
+                        "description": "Name for the new form"
+                    },
+                    "record_source": {
+                        "type": "string",
+                        "description": "Table or query name to bind to (optional)"
+                    },
+                    "form_type": {
+                        "type": "string",
+                        "enum": ["single", "continuous", "datasheet"],
+                        "description": "Form type: single (default), continuous, or datasheet"
+                    }
+                },
+                "required": ["file_path", "form_name"]
+            }
+        ),
+        Tool(
+            name="delete_access_form",
+            description=(
+                "[PRO] Delete an Access form. "
+                "By default creates a backup before deleting."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Absolute path to Access database (.accdb or .mdb)"
+                    },
+                    "form_name": {
+                        "type": "string",
+                        "description": "Name of form to delete"
+                    },
+                    "backup_first": {
+                        "type": "boolean",
+                        "description": "Create backup before deleting (default: true)"
+                    }
+                },
+                "required": ["file_path", "form_name"]
+            }
+        ),
+        Tool(
+            name="export_form_definition",
+            description=(
+                "[PRO] Export Access form to text file using SaveAsText. "
+                "Exports complete form definition including controls, layout, and VBA code. "
+                "Enables viewing/editing form structure as text."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Absolute path to Access database (.accdb or .mdb)"
+                    },
+                    "form_name": {
+                        "type": "string",
+                        "description": "Name of form to export"
+                    },
+                    "output_path": {
+                        "type": "string",
+                        "description": "Output file path (default: same folder as database)"
+                    }
+                },
+                "required": ["file_path", "form_name"]
+            }
+        ),
+        Tool(
+            name="import_form_definition",
+            description=(
+                "[PRO] Import Access form from text definition file using LoadFromText. "
+                "Re-imports a form previously exported with export_form_definition."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Absolute path to Access database (.accdb or .mdb)"
+                    },
+                    "form_name": {
+                        "type": "string",
+                        "description": "Name for the imported form"
+                    },
+                    "definition_path": {
+                        "type": "string",
+                        "description": "Path to the .txt definition file"
+                    },
+                    "overwrite": {
+                        "type": "boolean",
+                        "description": "Overwrite if form already exists (default: false)"
+                    }
+                },
+                "required": ["file_path", "form_name", "definition_path"]
+            }
+        ),
+        # === ACCESS VBA TOOLS (COM-based) ===
+        Tool(
+            name="extract_vba_access",
+            description=(
+                "[PRO] Extract VBA code from Access database using COM. "
+                "oletools does not support .accdb files, so this tool uses "
+                "VBProject.VBComponents via COM to extract VBA code."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Absolute path to Access database (.accdb or .mdb)"
+                    },
+                    "module_name": {
+                        "type": "string",
+                        "description": "Optional: specific module to extract"
+                    }
+                },
+                "required": ["file_path"]
+            }
+        ),
+        Tool(
+            name="analyze_structure_access",
+            description=(
+                "[PRO] Analyze VBA code structure in Access database using COM. "
+                "Provides complexity metrics, procedure analysis, and recommendations."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Absolute path to Access database (.accdb or .mdb)"
+                    },
+                    "module_name": {
+                        "type": "string",
+                        "description": "Optional: specific module to analyze"
+                    }
+                },
+                "required": ["file_path"]
+            }
+        ),
+        Tool(
+            name="compile_vba",
+            description=(
+                "[PRO] Compile VBA project and detect compilation errors. "
+                "Checks if VBA code compiles successfully and reports any "
+                "syntax or reference errors. Important because run_macro fails "
+                "silently if the VBA project has compilation errors."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "Absolute path to Office file (.accdb, .mdb, .xlsm, .xlsb)"
+                    }
+                },
+                "required": ["file_path"]
+            }
         )
     ]
 
@@ -824,6 +1025,52 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 query_name=arguments.get("query_name"),
                 sql=arguments.get("sql"),
                 limit=arguments.get("limit")
+            )
+        # Access Forms tools
+        elif name == "list_access_forms":
+            result = await list_access_forms_tool(
+                file_path=arguments["file_path"]
+            )
+        elif name == "create_access_form":
+            result = await create_access_form_tool(
+                file_path=arguments["file_path"],
+                form_name=arguments["form_name"],
+                record_source=arguments.get("record_source"),
+                form_type=arguments.get("form_type", "single")
+            )
+        elif name == "delete_access_form":
+            result = await delete_access_form_tool(
+                file_path=arguments["file_path"],
+                form_name=arguments["form_name"],
+                backup_first=arguments.get("backup_first", True)
+            )
+        elif name == "export_form_definition":
+            result = await export_form_definition_tool(
+                file_path=arguments["file_path"],
+                form_name=arguments["form_name"],
+                output_path=arguments.get("output_path")
+            )
+        elif name == "import_form_definition":
+            result = await import_form_definition_tool(
+                file_path=arguments["file_path"],
+                form_name=arguments["form_name"],
+                definition_path=arguments["definition_path"],
+                overwrite=arguments.get("overwrite", False)
+            )
+        # Access VBA tools (COM-based)
+        elif name == "extract_vba_access":
+            result = await extract_vba_access_tool(
+                file_path=arguments["file_path"],
+                module_name=arguments.get("module_name")
+            )
+        elif name == "analyze_structure_access":
+            result = await analyze_structure_access_tool(
+                file_path=arguments["file_path"],
+                module_name=arguments.get("module_name")
+            )
+        elif name == "compile_vba":
+            result = await compile_vba_tool(
+                file_path=arguments["file_path"]
             )
         else:
             raise ValueError(f"Unknown tool: {name}")

@@ -1,12 +1,12 @@
 # VBA MCP Server - Roadmap & TODO
 
-## Current Status: v0.6.0 (Production Ready)
+## Current Status: v0.8.0 (Production Ready)
 
 **Last Updated:** 2024-12-30
 
 ### Test Results
 - Excel: 20/20 (100%)
-- Access: 13/13 (100%)
+- Access: 16/16 (100%)
 
 ---
 
@@ -38,6 +38,25 @@
 - [x] Inject VBA modules
 - [x] VBA syntax validation
 - [x] Backup/Rollback system
+- [x] Forms support (list, create, delete, export/import as text)
+
+### Access VBA via COM (NEW in v0.8.0)
+- [x] **extract_vba_access** - Extract VBA code from .accdb using COM
+  - Uses VBProject.VBComponents instead of oletools
+  - Full code extraction with procedure parsing
+  - File: `packages/pro/src/vba_mcp_pro/tools/access_vba.py`
+
+- [x] **analyze_structure_access** - Analyze VBA structure via COM
+  - Complexity metrics (cyclomatic complexity)
+  - Procedure analysis with call graph
+  - Dependency detection
+  - Recommendations for refactoring
+
+- [x] **compile_vba** - Compile VBA and detect errors
+  - Uses Application.DoCmd.RunCommand(acCmdCompileAndSaveAllModules)
+  - Reports compilation errors with module/line
+  - Detects best practice warnings (Option Explicit, etc.)
+  - Works with Access and Excel files
 
 ---
 
@@ -119,11 +138,9 @@
   - Difficulty: Medium
 
 ### Access
-- [ ] **Forms support** (read-only)
-  - List forms
-  - Open forms
-  - Priority: LOW
-  - Difficulty: Hard
+- [x] ~~**Forms support**~~ → Implemented in v0.7.0
+  - list_access_forms, create_access_form, delete_access_form
+  - export_form_definition (SaveAsText), import_form_definition (LoadFromText)
 
 - [ ] **Reports support** (read-only)
   - List reports
@@ -183,11 +200,15 @@
 
 ### Access
 1. **oletools** - Doesn't support .accdb files
-   - Workaround: Use COM via session manager for VBA extraction
+   - Affected tools: `extract_vba`, `list_modules`, `analyze_structure` (lite version)
+   - SOLVED in v0.8.0: Use `extract_vba_access`, `analyze_structure_access` instead
+   - These Pro tools use COM (VBProject.VBComponents) instead of oletools
 
 2. **run_macro** - Application.Run behaves differently than Excel
    - Access macros (UI-created) vs VBA procedures are different
-   - Workaround: Use inject_vba to add callable code
+   - Must use just procedure name, not "Module.Procedure" format
+   - If VBA project has compilation errors, run_macro fails silently
+   - SOLVED in v0.8.0: Use `compile_vba` to detect errors first
 
 3. **DisplayAlerts** - Access doesn't have this property
    - Non-blocking, just a warning message
@@ -218,6 +239,8 @@ Priority order: HIGH > MEDIUM > LOW
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| v0.8.0 | 2024-12-30 | Access VBA via COM (extract, analyze, compile) |
+| v0.7.0 | 2024-12-30 | Access Forms support (5 tools) |
 | v0.6.0 | 2024-12-30 | Complete Access support, action queries |
 | v0.5.0 | 2024-12-28 | VBA injection fixes, validation improvements |
 | v0.4.0 | 2024-12-15 | Excel Tables, critical fixes |

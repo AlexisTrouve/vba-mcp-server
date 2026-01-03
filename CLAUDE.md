@@ -3,33 +3,37 @@
 ## Projet
 VBA MCP Server - Serveur Model Context Protocol pour manipulation de code VBA dans les fichiers Microsoft Office.
 
-## Statut Actuel : v0.6.0 - Production Ready
+## Statut Actuel : v0.8.0 - Production Ready
 
-**Dernière mise à jour:** 30 décembre 2024
+**Derniere mise a jour:** 30 decembre 2024
 
-### Résultats des Tests
+### Resultats des Tests
 
 | Composant | Tests | Status |
 |-----------|-------|--------|
 | Excel | 20/20 (100%) | Stable |
-| Access | 13/13 (100%) | Stable |
+| Access | 16/16 (100%) | Stable |
 | VBA Injection | 100% | Stable |
 | VBA Validation | 100% | Stable |
+| Access VBA COM | 3/3 (100%) | NEW |
 
-### Fonctionnalités Opérationnelles
+### Fonctionnalites Operationnelles
 
-| Fonctionnalité | Excel | Access | Notes |
+| Fonctionnalite | Excel | Access | Notes |
 |----------------|-------|--------|-------|
-| Extraction VBA | Yes | Yes (COM) | |
+| Extraction VBA | Yes | Yes (COM) | extract_vba_access pour .accdb |
 | Injection VBA | Yes | Yes | |
 | Liste modules | Yes | Yes (COM) | oletools ne supporte pas .accdb |
-| Exécution macros | Yes | Limited | Access macros != VBA |
+| Analyse structure | Yes | Yes (COM) | analyze_structure_access NEW |
+| Compilation VBA | Yes | Yes | compile_vba NEW |
+| Execution macros | Yes | Limited | Access macros != VBA |
 | Validation syntaxe | Yes | Yes | |
-| Lecture données | Yes | Yes | |
-| Écriture données | Yes | Yes | append/replace |
+| Lecture donnees | Yes | Yes | |
+| Ecriture donnees | Yes | Yes | append/replace |
 | SQL SELECT | - | Yes | |
-| SQL INSERT/UPDATE/DELETE | - | Yes | NEW |
+| SQL INSERT/UPDATE/DELETE | - | Yes | |
 | Excel Tables | Yes | - | 6 outils |
+| Access Forms | - | Yes | 5 outils |
 | Backup/Rollback | Yes | Yes | |
 
 ## Structure du Projet
@@ -71,52 +75,66 @@ python test_access_complete.py
 python test_access_tools.py
 ```
 
-## Outils MCP Disponibles (24 total)
+## Outils MCP Disponibles (32 total)
 
-### Lite (6 outils)
-- `extract_vba` - Extraire code VBA
+### Lite (3 outils)
+- `extract_vba` - Extraire code VBA (oletools)
 - `list_modules` - Lister modules VBA
 - `analyze_structure` - Analyser structure du code
 
-### Pro (18 outils)
+### Pro (29 outils)
 
 #### VBA
 - `inject_vba` - Injecter code VBA
 - `validate_vba` - Valider syntaxe VBA
-- `run_macro` - Exécuter macros
+- `run_macro` - Executer macros
 
-#### Données
+#### Donnees
 - `open_in_office` - Ouvrir fichier Office
-- `get_worksheet_data` - Lire données (Excel/Access)
-- `set_worksheet_data` - Écrire données (Excel/Access)
+- `get_worksheet_data` - Lire donnees (Excel/Access)
+- `set_worksheet_data` - Ecrire donnees (Excel/Access)
 
 #### Excel Tables
-- `list_excel_tables` - Lister tables Excel
-- `create_excel_table` - Créer table Excel
-- `insert_rows` / `delete_rows` - Gérer lignes
-- `insert_columns` / `delete_columns` - Gérer colonnes
+- `list_tables` - Lister tables Excel
+- `create_table` - Creer table Excel
+- `insert_rows` / `delete_rows` - Gerer lignes
+- `insert_columns` / `delete_columns` - Gerer colonnes
 
-#### Access
-- `list_access_tables` - Lister tables avec schéma
-- `list_access_queries` - Lister requêtes sauvegardées
-- `run_access_query` - Exécuter SQL (SELECT/INSERT/UPDATE/DELETE)
+#### Access Data
+- `list_access_tables` - Lister tables avec schema
+- `list_access_queries` - Lister requetes sauvegardees
+- `run_access_query` - Executer SQL (SELECT/INSERT/UPDATE/DELETE)
+
+#### Access Forms
+- `list_access_forms` - Lister tous les formulaires
+- `create_access_form` - Creer formulaire (vide ou lie a table)
+- `delete_access_form` - Supprimer formulaire (avec backup)
+- `export_form_definition` - Exporter en texte (SaveAsText)
+- `import_form_definition` - Importer depuis texte (LoadFromText)
+
+#### Access VBA via COM (NEW in v0.8.0)
+- `extract_vba_access` - Extraire VBA depuis .accdb via COM
+- `analyze_structure_access` - Analyser structure VBA via COM
+- `compile_vba` - Compiler projet VBA et detecter erreurs
 
 #### Backup
-- `create_backup` - Créer sauvegarde
+- `create_backup` - Creer sauvegarde
 - `restore_backup` - Restaurer sauvegarde
 - `list_backups` - Lister sauvegardes
 
-## Fichiers Clés
+## Fichiers Cles
 
 | Fichier | Description |
 |---------|-------------|
 | `packages/pro/src/vba_mcp_pro/server.py` | Serveur MCP principal |
 | `packages/pro/src/vba_mcp_pro/tools/office_automation.py` | Outils Access + Excel |
+| `packages/pro/src/vba_mcp_pro/tools/access_vba.py` | VBA Access via COM (NEW) |
 | `packages/pro/src/vba_mcp_pro/tools/inject.py` | Injection VBA |
 | `packages/pro/src/vba_mcp_pro/tools/validate.py` | Validation syntaxe |
 | `packages/pro/src/vba_mcp_pro/session_manager.py` | Gestion sessions Office |
 | `test_access_complete.py` | Suite de tests Access |
-| `TODO.md` | Roadmap fonctionnalités |
+| `test_access_vba_tools.py` | Tests Access VBA COM (NEW) |
+| `TODO.md` | Roadmap fonctionnalites |
 
 ## Limitations Connues
 
@@ -156,7 +174,7 @@ Le projet `../vba-mcp-demo/sample-files/` contient :
 
 ### Basse Priorité
 - Support Word/PowerPoint
-- Forms/Reports Access
+- Reports Access (export PDF)
 
 ## Contact
 
