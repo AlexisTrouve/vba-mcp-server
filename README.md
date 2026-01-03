@@ -1,200 +1,155 @@
-# VBA MCP Server - Monorepo
+# VBA MCP Server
 
-Model Context Protocol (MCP) servers for VBA extraction, analysis, and modification in Microsoft Office files.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
-> **MCP** enables Claude to interact with Office files through specialized tools. Perfect for automating VBA analysis, refactoring, and code injection.
+Model Context Protocol (MCP) server for VBA extraction and analysis in Microsoft Office files.
 
-## 🚀 Quick Start
-
-**→ READ THIS FIRST:** [START_HERE.md](START_HERE.md)
-
-Complete setup guide with 3 simple steps (5 minutes).
+> **MCP** enables Claude to interact with Office files through specialized tools. Extract, analyze, and understand VBA code from Excel, Word, and Access files.
 
 ## Features
 
 ### Lite (Free - MIT)
-- Extract VBA code from Office files (.xlsm, .xlsb, .docm, .accdb)
-- List all VBA modules and procedures
-- Analyze code structure and complexity metrics
+- **Extract VBA code** from Office files (.xlsm, .xlsb, .docm, .accdb)
+- **List all VBA modules** and procedures
+- **Analyze code structure** and complexity metrics
 
-### Pro (Commercial) - v0.6.0 ✅ Production Ready
-- All Lite features
-- **Inject VBA code** back into Office files (Windows + COM) - **100% operational** ✅
-- **VBA code validation** - Validate VBA syntax before injection with smart detection
-- **List macros** - Discover all public macros in Office files
-- **AI-powered refactoring** suggestions
-- **Backup management** (create, restore, list backups) with automatic rollback
-- **Interactive Office automation**
-  - Open Excel/Word/Access visibly on screen
-  - Run VBA macros with parameters (improved error handling)
-  - Read/write Excel data as JSON
-  - Persistent sessions (files stay open between operations)
-  - Auto-cleanup after 1-hour timeout
-- **Excel Tables** - 6 tools for structured table operations
-  - List all Excel Tables (ListObjects)
-  - Insert/delete rows in worksheets or tables
-  - Insert/delete columns by letter, number, or header name
-  - Create Excel Tables from ranges with formatting
-  - Read/write table data with column selection
-- **Microsoft Access Support (NEW v0.6.0)** - Full Access database integration
-  - Read/write data from Access tables with SQL support
-  - Filter data with WHERE clauses and ORDER BY
-  - List all tables with schema (fields, types, record counts)
-  - List and execute saved queries (QueryDefs)
-  - Run custom SQL queries directly
-  - VBA injection and validation for Access
-- **Enhanced reliability** - Automatic backups, validation, and rollback on errors
+### Pro (Commercial)
+- All Lite features, plus:
+- **Inject VBA code** back into Office files
+- **Run macros** with parameters
+- **Read/write data** from Excel and Access
+- **Access Forms** - Create, export, import forms programmatically
+- **VBA compilation check** - Detect errors before running
+- **Backup/restore** with automatic rollback
 
-**Total: 24 MCP tools** (18 Pro + 6 Lite)
-
-## Structure
-
-```
-vba-mcp-monorepo/
-├── packages/
-│   ├── core/       # vba-mcp-core - Shared library (MIT)
-│   ├── lite/       # vba-mcp-server - Open source server (MIT)
-│   └── pro/        # vba-mcp-server-pro - Commercial version
-├── docs/           # Documentation
-├── examples/       # Example files
-└── tests/          # Integration tests
-```
-
-## Packages
-
-| Package | Description | License |
-|---------|-------------|---------|
-| `vba-mcp-core` | Core extraction/parsing library | MIT |
-| `vba-mcp-server` | Lite MCP server (read-only) | MIT |
-| `vba-mcp-server-pro` | Pro server (modification features) | Commercial |
+See [vba-mcp-server-pro](https://git.etheryale.com/StillHammer/vba-mcp-server-pro) for the commercial version.
 
 ## Quick Start
 
-### For Users
+### Installation
 
 ```bash
-# Install Lite (free)
 pip install vba-mcp-server
-
-# Install Pro (commercial)
-pip install vba-mcp-server-pro[windows]  # Windows only
 ```
 
-### HTTP/SSE Transport (Cross-Platform)
+### Claude Desktop Configuration
 
-**NEW**: Run the server on Windows and connect from any OS (WSL, macOS, Linux)!
+Add to your Claude Desktop config (`%APPDATA%\Claude\claude_desktop_config.json`):
 
-```bash
-# On Windows - Start HTTP server
-vba-mcp-server-pro-http --host 0.0.0.0 --port 8000
-
-# Configure client (any OS)
+```json
 {
   "mcpServers": {
-    "vba-pro": {
-      "url": "http://YOUR_WINDOWS_IP:8000/sse"
+    "vba": {
+      "command": "python",
+      "args": ["-m", "vba_mcp_server"]
     }
   }
 }
 ```
 
-**Perfect for:**
-- 🐧 Connecting from WSL to Windows
-- 🍎 Connecting from macOS to Windows server
-- 🌐 Team setups with shared Windows server
-- 📦 Docker containers accessing Windows host
+Restart Claude Desktop.
 
-See **[packages/pro/HTTP_SETUP.md](packages/pro/HTTP_SETUP.md)** for complete setup guide.
+## MCP Tools
 
-### For Developers
+| Tool | Description |
+|------|-------------|
+| `extract_vba` | Extract VBA code from a specific module |
+| `list_modules` | List all VBA modules in a file |
+| `analyze_structure` | Analyze code structure and complexity |
 
-See **[DEVELOPMENT.md](DEVELOPMENT.md)** for complete setup instructions.
+## Usage Examples
 
-Quick install:
+### Extract VBA Code
+
+```
+Extract the VBA code from the "Module1" module in C:\path\to\file.xlsm
+```
+
+### List All Modules
+
+```
+List all VBA modules in C:\path\to\workbook.xlsm
+```
+
+### Analyze Code Structure
+
+```
+Analyze the VBA code structure in C:\path\to\file.xlsm
+```
+
+## Supported File Types
+
+| Extension | Application | Support |
+|-----------|-------------|---------|
+| `.xlsm` | Excel (macro-enabled) | Full |
+| `.xlsb` | Excel (binary) | Full |
+| `.xls` | Excel (legacy) | Full |
+| `.docm` | Word (macro-enabled) | Full |
+| `.doc` | Word (legacy) | Full |
+| `.accdb` | Access | Partial* |
+
+*For full Access support including VBA extraction via COM, see the Pro version.
+
+## Development
+
+### Setup
+
 ```bash
+# Clone the repository
+git clone https://github.com/AlexisTrouve/vba-mcp-server.git
+cd vba-mcp-server
+
 # Create virtual environment
 python -m venv venv
-source venv/bin/activate
+source venv/bin/activate  # or venv\Scripts\activate on Windows
 
 # Install in editable mode
 pip install -e packages/core
 pip install -e packages/lite
-pip install -e packages/pro[windows]  # Windows only
 ```
 
-## Publishing Strategy
+### Project Structure
 
-### Public Repo (GitHub)
-Only `core/` and `lite/` are published publicly.
+```
+vba-mcp-server/
+├── packages/
+│   ├── core/       # vba-mcp-core - Shared extraction library
+│   └── lite/       # vba-mcp-server - MCP server (this package)
+├── docs/           # Documentation
+├── examples/       # Example files
+└── tests/          # Tests
+```
+
+### Running Tests
 
 ```bash
-# Use public .gitignore (excludes packages/pro/)
-cp .gitignore.public .gitignore
-git add .
-git commit -m "Release"
-git push origin main
+pytest packages/lite/tests/
 ```
 
-### Private Repo
-Full monorepo including `pro/`.
+## Requirements
 
-```bash
-# Use default .gitignore (includes everything)
-git push private main
-```
-
-## MCP Tools Reference
-
-### Lite Tools (6)
-| Tool | Description |
-|------|-------------|
-| `extract_vba` | Extract VBA code from modules |
-| `list_modules` | List all VBA modules |
-| `analyze_structure` | Analyze code structure |
-
-### Pro Tools (18)
-| Tool | Description |
-|------|-------------|
-| `inject_vba` | Inject VBA code into modules |
-| `validate_vba` | Validate VBA syntax |
-| `run_macro` | Execute VBA macros |
-| `open_in_office` | Open file in Office application |
-| `get_worksheet_data` | Read data from Excel/Access |
-| `set_worksheet_data` | Write data to Excel/Access |
-| `list_excel_tables` | List Excel Tables |
-| `create_excel_table` | Create new Excel Table |
-| `insert_rows` | Insert rows in worksheet/table |
-| `delete_rows` | Delete rows |
-| `insert_columns` | Insert columns |
-| `delete_columns` | Delete columns |
-| `create_backup` | Create file backup |
-| `restore_backup` | Restore from backup |
-| `list_backups` | List available backups |
-| `list_access_tables` | List Access tables with schema |
-| `list_access_queries` | List saved queries |
-| `run_access_query` | Execute SQL/saved queries |
-
-## Testing
-
-```bash
-# Run all tests
-pytest
-
-# Run specific tests
-pytest packages/pro/tests/
-python test_access_complete.py
-```
+- Python 3.8+
+- oletools (for VBA extraction)
 
 ## Known Limitations
 
-1. **Windows only** - VBA injection requires pywin32 + COM
-2. **Trust VBA** - Enable "Trust access to VBA project object model" in Office
-3. **oletools** - Doesn't support .accdb for module listing (use COM workaround)
+1. **oletools** doesn't fully support `.accdb` files - some Access features require COM (Pro version)
+2. Read-only operations - for VBA injection, see the Pro version
 
-## Roadmap
+## Contributing
 
-See **[TODO.md](TODO.md)** for planned features.
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
 
 ## Author
 
 Alexis Trouve - alexistrouve.pro@gmail.com
+
+## See Also
+
+- [MCP Protocol](https://modelcontextprotocol.io/) - Model Context Protocol specification
+- [oletools](https://github.com/decalage2/oletools) - Python tools for OLE/Office files
